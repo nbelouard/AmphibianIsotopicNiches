@@ -1,0 +1,339 @@
+---
+title: "Network plots with ellipses"
+author: "Nadege Belouard"
+date: "07/12/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+This vignette draws all the plots related to the trophic networks. First, we load the different packages and datasets that we need.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(ggrepel)
+library("rgeos")
+library(dplyr)
+library(magrittr)
+library(here)
+
+#### Points
+# With all points
+Dataset_homogen <- read.csv(file.path(here(), "exported_data", "Isotope_data_standardized_reduced.csv"), header=T)
+dim(Dataset_homogen)
+
+# Add the variable Taxa Used
+for (i in 1:length(Dataset_homogen$Pond)) {
+  if (Dataset_homogen$Taxa[i] %in% c("Agile frog", "Tree frog", "Palmate newt", "Marbled newt")) {
+    Dataset_homogen$TaxaUsed[i] = Dataset_homogen$Taxa[i]
+  } else if(Dataset_homogen$Taxa[i] %in% c("Ad crayfish", "Juv crayfish")) {
+    Dataset_homogen$TaxaUsed[i] = "Crayfish"
+  } else{
+    Dataset_homogen$TaxaUsed[i] = "Other"
+  }
+}
+
+
+
+# Without outliers
+Dataset_minusoutliers <- read.csv(file.path(here(), "exported_data", "Isotope_data_minusoutliers.csv"), header=T)
+dim(Dataset_minusoutliers)
+
+# Add the variable TaxaUsed
+for (i in 1:length(Dataset_minusoutliers$Pond)) {
+  if (Dataset_minusoutliers$Taxa[i] %in% c("Agile frog", "Tree frog", "Palmate newt", "Marbled newt")) {
+    Dataset_minusoutliers$TaxaUsed[i] = Dataset_minusoutliers$Taxa[i]
+  } else if(Dataset_minusoutliers$Taxa[i] %in% c("Ad crayfish", "Juv crayfish")) {
+    Dataset_minusoutliers$TaxaUsed[i] = "Crayfish"
+  } else{
+    Dataset_minusoutliers$TaxaUsed[i] = "Other"
+  }
+}
+
+
+
+### Ellipses
+#Per species
+CoordSEAc_complete_species <- read.csv(file.path(here(), "exported_data", "Coordinates_SEAc_species_complete.csv"), header=T)
+CoordSEAc_minusoutliers_species <- read.csv(file.path(here(), "exported_data", "Coordinates_SEAc_species_subset.csv"), header=T)
+names(CoordSEAc_complete_species)[1] <- "TaxaUsed"
+names(CoordSEAc_minusoutliers_species)[1] <- "TaxaUsed"
+
+#Per population
+CoordSEAc <- read.csv(file.path(here(), "exported_data", "Coordinates_SEAc_subset.csv"), header=T)
+# names(CoordSEAc_consoI)[5] <- "TaxaUsed"
+CoordSEAc_complete <- read.csv(file.path(here(), "exported_data", "Coordinates_SEAc_complete.csv"), header=T)
+
+
+
+### Average points
+Avg_data_complete <- Dataset_homogen %>% group_by(Taxa, Pond) %>%
+  summarise(TPavg = mean(TP),
+            D13Cavg = mean(D13Ccor_consoI),
+            TPsd = sd(TP),
+            D13Csd = sd(D13Ccor_consoI))
+
+Avg_data_minusoutliers <- Dataset_minusoutliers %>% group_by(Taxa, Pond) %>%
+  summarise(TPavg = mean(TP),
+            D13Cavg = mean(D13Ccor_consoI),
+            TPsd = sd(TP),
+            D13Csd = sd(D13Ccor_consoI))
+
+```
+
+# Add colors (DEPRECATED)
+```{r add colors}
+
+# Legend colors
+# Dataset homogen (complete)
+# Species <- levels(droplevels(as.factor(Dataset_homogen$TaxaUsed)))
+# ColorPalette<- data.frame(cbind(TaxaUsed = c("Agile frog", "Tree frog",
+#                                          "Palmate newt", "Marbled newt",
+#                                          "Crayfish", "Other"),
+#                                 Color = c("#0072B2", "#009E73",
+#                                           "#56B4E9", "#CC79A7",
+#                                           "#E69F00", "black"),
+#                                 ColorName = c("Blue", "Green",
+#                                               "Light blue", "Pink",
+#                                               "Orange", "Black")))
+#   
+# Dataset_homogen <- merge(Dataset_homogen, ColorPalette, by = "TaxaUsed")
+# Dataset_minusoutliers <- merge(Dataset_minusoutliers, ColorPalette, by = "TaxaUsed")
+# CoordSEAc_complete <- merge(CoordSEAc_complete, ColorPalette, by = "TaxaUsed")
+# CoordSEAc_minusoutliers <- merge(CoordSEAc_minusoutliers, ColorPalette, by = "TaxaUsed")
+
+```
+
+We summarize each taxa by the average point and its SD to graphically represent the position and the variability in the isotopic signature of each taxa.
+
+
+# Plots with ellipses per species
+
+## Figure 1
+```{r plot network with ellipses per species and all individuals, include=FALSE}
+
+# With outliers
+M_ind <- Dataset_homogen %>% filter (Group %in% c("Crayfish", "Amphibians"))
+dim(M_ind)
+M_coord <- CoordSEAc_complete_species
+M_ind$TaxaUsed <- factor(M_ind$TaxaUsed, levels = c("Crayfish",
+                                                    "Agile frog",
+                                                    "Tree frog",
+                                                    "Palmate newt",
+                                                    "Marbled newt"))
+
+species_ellipses <- ggplot(data = M_ind, aes(x = D13Ccor_consoI, y = TP)) +
+  geom_point(aes(col = TaxaUsed), alpha = 0.7, shape = 16) +
+  geom_path(data = M_coord, aes(coordX, coordY, col = TaxaUsed), lwd = 1.5) +
+  scale_color_manual(values = c("#E69F00", 
+                                "#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab(bquote(''*delta^13~C["cor"]*'')) +
+  guides(col = guide_legend("Taxa")) +
+  ylab("Trophic position") +
+  theme_classic() + 
+  theme(legend.justification = c(0, 1), legend.position = c(0, 1))
+
+ggsave(species_ellipses, filename = file.path(here(), "figures", "species_ellipsesv2.jpg"), height = 4, width = 6)
+
+
+# figure with ellipses only
+species_ellipses <- ggplot() +
+  geom_path(data = M_coord, aes(coordX, coordY, col = TaxaUsed), lwd = 1.5) +
+  scale_color_manual(values = c("#0072B2", "#E69F00",
+                                          "#CC79A7", "#56B4E9", 
+                                          "#009E73")) +
+  xlab("D13Ccor") +
+  ylab("Trophic position") +
+  guides(col = guide_legend("Taxa")) +
+  theme_classic()
+
+ggsave(species_ellipses, filename = file.path(here(), "figures", "species_ellipses_only.jpg"), height = 4, width = 6)
+
+
+
+# Without outliers
+M_ind_out <- Dataset_minusoutliers %>% filter (Group %in% c("Crayfish", "Amphibians"))
+dim(M_ind_out)
+M_coord_out <- CoordSEAc_minusoutliers
+
+species_ellipses <- ggplot(data = M_ind_out, aes(x = D13Ccor_consoI, y = TP)) +
+  geom_point(aes(col = Color), alpha = 0.7, shape = 16) +
+  geom_path(data = M_coord_out, aes(coordX, coordY, col = Color), lwd = 1.5) +
+  scale_color_identity() +
+  xlab("D13Ccor") +
+  ylab("Trophic position") +
+  theme_classic()
+
+
+ggsave(species_ellipses, filename = file.path(here(), "figures", "species_ellipses_minus outliers.jpg"), height = 6, width = 6)
+
+
+
+
+# Highlight difference between the two
+species_ellipses <- ggplot(data = M_ind_out, aes(x = D13Ccor_consoI, y = TP)) +
+  geom_point(alpha = 0.7, shape = 16, size = 3) +
+  geom_point(data = M_ind, aes(col = Color), alpha = 0.7, shape = 16) +
+  scale_color_identity() +
+  xlab("D13Ccor") +
+  ylab("Trophic position") +
+  theme_classic()
+
+dim(M_ind)
+dim(M_ind_out)
+
+
+```
+
+
+
+# Plots with ellipses per population per pond
+## Figure 2
+```{r plot ellipses only, include=FALSE}
+
+names(CoordSEAc_complete)
+ponds_code <- read.table(file.path(here(), "pond_code.txt"), h=T)
+CoordSEAc_complete <- left_join(CoordSEAc_complete, ponds_code)
+CoordSEAc_complete$Pond_code <- factor(CoordSEAc_complete$Pond_code, levels = c("U1", "U2", "U3", "U4", "U5", "U6",
+                                                                                "I1", "I2", "I3", "I4", "I5", "I6",
+                                                                                "I7", "I8", "I9", "I10", "I11", "I12",
+                                                                                "I13", "I14"))
+M_ind$TaxaUsed <- factor(M_ind$TaxaUsed, levels = c("Crayfish",
+                                                    "Agile frog",
+                                                    "Tree frog",
+                                                    "Palmate newt",
+                                                    "Marbled newt"))
+M_ind <- left_join(M_ind, ponds_code)
+M_ind$Pond_code <- factor(M_ind$Pond_code, levels = c("U1", "U2", "U3", "U4", "U5", "U6",
+                                                                                "I1", "I2", "I3", "I4", "I5", "I6",
+                                                                                "I7", "I8", "I9", "I10", "I11", "I12",
+                                                                                "I13", "I14"))
+
+# Facet wrap ellipses
+ellipses_pop <- ggplot() +
+  theme_classic() +
+  geom_path(data = CoordSEAc_complete, aes(coordX, coordY, col = Species), size=2, linetype=1) +
+  scale_color_manual(values = c("#0072B2", "#E69F00",
+                                          "#CC79A7", "#56B4E9", 
+                                          "#009E73")) +
+  facet_wrap(~Pond_code, scales = "free_x") +
+  xlab(bquote(''*delta^13~C["cor"]*'')) +
+  ylab("Trophic position")
+
+ellipses_pop
+ggsave(ellipses_pop, filename = file.path(here(), "figures", "ellipses_pop_complete.jpg"), width = 15, height = 10)
+
+
+# Set limits for x values
+blank_data <- data.frame(Pond_code = c("U1", "U1", 
+                                   "U2", "U2", 
+                                   "U3", "U3",
+                                   "U4", "U4",
+                                   "U5", "U5",
+                                   "U6", "U6",
+                                   "I1", "I1",
+                                   "I2", "I2",
+                                   "I3", "I3",
+                                   "I4", "I4",
+                                   "I5", "I5",
+                                   "I6", "I6",
+                                   "I7", "I7",
+                                   "I8", "I8",
+                                   "I9", "I9",
+                                   "I10", "I10",
+                                   "I11", "I11",
+                                   "I12", "I12",
+                                   "I13", "I13",
+                                   "I14", "I14"),
+                         y = 1,
+                         x = c(-1.5, 1.5, 
+                               -2, 1.5, 
+                               -4, 1.5,
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5, 
+                               -1.5, 1.5))
+blank_data$Pond_code <- factor(blank_data$Pond_code, levels = c("U1", "U2", "U3", "U4", "U5", "U6",
+                                                                                "I1", "I2", "I3", "I4", "I5", "I6",
+                                                                                "I7", "I8", "I9", "I10", "I11", "I12",
+                                                                                "I13", "I14"))
+
+# Facet wrap ellipses and points
+# Dataset_target <- Dataset_homogen %>% filter(!TaxaUsed == "Other")
+
+ellipses_pop <- ggplot(data = M_ind, aes(D13Ccor_consoI, TP)) +
+  theme_classic() +
+  geom_point(aes(col = TaxaUsed), alpha = 0.7) +
+  geom_path(data = CoordSEAc_complete, aes(coordX, coordY, col = Species), size=1, linetype=1) +
+  
+  scale_color_manual(values = c("#E69F00", 
+                                "#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  geom_blank(data = blank_data, aes(x = x, y = y)) +
+  facet_wrap(~Pond_code, scales = "free_x") +
+  xlab(bquote(''*delta^13~C["cor"]*'')) +
+  ylab("Trophic position") +
+  guides(col = guide_legend("Taxa"))
+
+ellipses_pop
+
+ggsave(ellipses_pop, filename = file.path(here(), "figures", "ellipses_points_pop_completev4.jpg"), width = 15, height = 10)
+
+```
+
+
+# Plots with ellipses + points + C1 (DEPRECATED)
+```{r plot standardized networks consoI, include=FALSE}
+getwd()
+
+for (i in levels(as.factor(Dataset_homogen$Pond))) {
+  M_ind <- Dataset_homogen %>% filter(Pond == i) %>%
+    filter (Group %in% c("Crayfish", "Amphibians"))
+  M_avg <- Avg_data_std %>% filter(Pond == i) %>%
+    filter (Taxa %in% c("Corbiculidae", "Physa", "Zooplankton", "Gammarus", "Corixidae","Asellus"))
+    # filter(Taxa == "Other")
+  M_coord <- CoordSEAc_consoI %>% filter(Pond == i)
+  # M_coord_oneniche <- CoordSEAc_consoI_oneniche %>% filter(Pond == i)
+  
+f <- ggplot(data = M_avg, aes(x = D13Cavg, y = TPavg)) +
+  theme_classic() +
+  ggtitle(paste("Pond",i)) +
+  geom_text_repel(data = M_avg,
+  aes(x = D13Cavg, y = TPavg, label = Taxa),
+  colour = "darkgrey", size = 3) +
+  geom_errorbar(data = M_avg,
+  aes(y = TPavg, ymin = TPavg - TPsd, ymax = TPavg + TPsd),
+  colour = "darkgrey", width = 0.05) +
+  geom_errorbarh(data = M_avg,
+  aes(x = D13Cavg, xmin = D13Cavg - D13Csd, xmax = D13Cavg + D13Csd),
+  colour = "darkgrey", height = 0.05) +
+  geom_point(data = M_ind, aes(x = D13Ccor_consoI, y = TP, colour = Palette), size = 1) +
+  geom_path(data = M_coord, aes(coordX, coordY, col = Palette), size=0.5, linetype=1) +
+  # geom_path(data = M_coord_oneniche, aes(coordX, coordY, col = Palette), size=0.5, linetype=2) +
+  scale_colour_identity() +
+  xlab("D13Ccor") +
+  ylab("Trophic position") +
+  xlim(c(min(Dataset_homogen$D13Ccor_consoI), max(Dataset_homogen$D13Ccor_consoI))) +
+  ylim(c(min(Dataset_homogen$TP), max(Dataset_homogen$TP)))
+
+
+ggsave(f, filename = file.path(here(), "figures", "networks_ellipses", paste("M",i,"_ellipses.png",sep="")), width=5, height=4)
+# ggsave(f, filename = file.path("../figures/networks_ellipses_oneniche", paste("M",i,"_ellipses.png",sep="")), width=5, height=4)
+}
+
+```

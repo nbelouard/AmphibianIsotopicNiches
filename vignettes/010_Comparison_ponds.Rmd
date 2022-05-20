@@ -1,0 +1,474 @@
+---
+title: "Stable coexistence between four native and one invasive species seen through the lens of isotopic niche analyses #1: pond characteristics and invasion"
+author: "Nadege Belouard"
+date: "15/11/2020"
+output: 
+  html_document:
+      toc: TRUE
+params:
+  show_code: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+Pitch:
+
+Invasive species are widely reported to cause local extinctions of native species. Where native species do persist, there is a unique opportunity to observe the mechanisms of coexistence at play and the modifications induced by the arrival of the invasive species.
+
+The red swamp crayfish, _Procambarus clarkii_, has been repeatedly shown to alter communities of aquatic ecosystems in its invasive range, and multiple reports of amphibian species decline are of particular concern. The generalist and omnivorous diet of this crayfish, associated to its burrowing activity, makes it interacting in multiple ways with amphibians. Predation on larval amphibians, antagonistic behavioral interactions with newts, depletion of the aquatic vegetation required to their reproduction, modification of resource availability and of water quality have all been detected in experimental conditions. Studying the food webs of natural ecosystems where this crayfish coexists with native amphibians is a way to advance the comprehension of the mechanisms underlying the settlement of species coexistence. 
+
+Despite multiple records of local amphibian extinctions after the introduction of the red swamp crayfish, the stable coexistence of these species has been observed in pond networks of the Natural Regional Park of Brière in northwestern France. What can be learned on the mechanisms of this coexistence based on isotopic niches?
+
+
+
+The purpose of this first vignette is to check if the trophic networks of invaded and uninvaded ponds should differ in any other characteristic than crayfish presence. This difference could be inherent to ponds variability, or result from the crayfish invasion, and needs to be signaled for in both cases.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = params$show_code)
+library(ggplot2)
+library(lme4)
+library(car)
+library(ggrepel)
+library(Hmisc)
+library(dplyr)
+library(ade4)
+library(factoextra)
+library(magrittr)
+library(here)
+```
+
+To begin with, we load the dataset and have a look at all the variables measured. 
+
+```{r load data}
+Variables<-read.table(file.path(here(), "./data-raw/Candidate_hab_com_variables.txt"))
+colnames(Variables)
+```
+ 
+ Variables can be subdivided into two categories:   
+    - habitat characteristics,  
+    - taxa density or abundance   
+ 
+We will explore these two categories separately because they do not reflect the same changes in pond characteristics.
+  
+
+# 1-  Habitat characteristics
+
+In this table, we subselect habitat characteristics of interest.
+
+```{r organize habitat table}
+Habitat <- Variables %>% dplyr::select("Area", "Canopycover", "Renovation", "Depth", "Turbidity", "Aq_VegCover", "DO", "Temperature", "Conductivity", "pH", "Hydrology")
+rownames(Habitat) <- Variables$Pond
+
+colnames(Habitat)
+```
+
+They are:   
+    + pond area,   
+    + canopy cover,   
+    + pond renovation,   
+    + pond depth,   
+    + water turbidity,   
+    + aquatic vegetation cover,   
+    + dissolved oxygen,   
+    + water temperature,   
+    + water conductivity,   
+    + pH,   
+    + and hydrology (water permanence).    
+  
+Most of them are quantitative variables and can be run in a PCA. Pond renovation and hydrology are qualitative variables that are more integrative of habitat characteristics, and will be tested separately. We run a PCA on habitat variables and see if they differ depending on crayfish presence or absence.
+
+```{r PCA on habitat variables: eigenvalues, fig.height = 3, fig.width=4}
+
+Habitat_quanti<- Habitat %>% dplyr::select("Area", "Canopycover", "Depth", "Turbidity", "Aq_VegCover", "DO", "Temperature", "Conductivity", "pH")
+rownames(Habitat_quanti) <- Variables$Pond
+
+pca <- dudi.pca(Habitat_quanti, center = TRUE, scale = TRUE, scannf = FALSE)
+fviz_eig(pca)
+eig.val <- get_eigenvalue(pca)
+eig.val
+``` 
+
+46% of the variance in habitat characteristics is explained by the two first axes of the PCA. 
+We continue by plotting the variables in the PCA space.
+
+```{r PCA on habitat variables: plot PCA variables, fig.height = 3, fig.width=4}
+
+fviz_pca_var(pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)# Avoid text overlapping     
+
+res.var <- get_pca_var(pca)
+paste("Contribution of the variables to the two first axes: ")
+# res.var$coord # Coordinates
+round(res.var$contrib,2) # Contributions to the PCA
+# round(res.var$cos2,2) # Quality of representation 
+```
+
+The first axis contains mostly information on canopy cover and water turbidity.
+The second axis is mostly a gradient of depth and aquatic vegetation cover.
+
+
+Now we plot the individuals (the ponds) on this representation to check whether they are well representated on the PCA.
+
+```{r PCA on habitat variables: plot PCA individuals, fig.height = 3, fig.width=4}
+
+fviz_pca_ind(pca, col.ind="cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+# s.label(pca$li, xax = 1, yax = 2) #ade4
+
+# Results for individuals
+res.ind <- get_pca_ind(pca)
+paste("Quality of representation of the individuals on the two first axes: ")
+# res.ind$coord          # Coordinates
+# res.ind$contrib        # Contributions to the PCs
+round(res.ind$cos2,2)           # Quality of representation 
+```
+
+Most ponds are colored in red and orange, meaning they are correctly represented on the PCA axes.
+
+
+## 1a. Uninvaded vs. invaded ponds
+
+We plot both variables and individuals together, and add ellipses on invaded and uninvaded ponds to see if ponds differ in their characteristics based on this PCA.
+
+```{r PCA on habitat variables: add ellipses for invaded or non-invaded ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Variables$Crayfish01)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                ellipse.level = 0.95,
+                legend.title = "Groups")  # Individuals color
+``` 
+
+This representation reveals that **there is a difference between invaded (red) and uninvaded (blue) ponds based on their habitat characteristics**. This difference is seen on both axes, meaning that not a single habitat variable differs between invaded and uninvaded ponds, but rather the global pond characteristics.
+Crayfish can be responsible for an increase in water turbidity due to their burrowing activity, and a decrease in aquatic vegetation cover. While crayfish probably do not have a preference for ponds with high canopy cover, it is possible that invaded ponds were abandoned and now have a higher canopy cover.
+We should keep these differences in mind while analyzing model results involving the influence of crayfish presence.
+
+
+## 1b. Renovated vs. non renovated ponds
+
+*Side note:* is there a difference between renovated and non-renovated ponds based on habitat characteristics?
+
+```{r PCA on habitat variables: add ellipses for renovated or non-renovated ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Habitat$Renovation)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+```
+
+We observe the same difference between renovated and non-renovated ponds, but it is less marked than the difference with the crayfish variable.
+
+
+## 1c. Temporary vs. permanent ponds
+
+*Side note 2:* is there a difference between temporary and permanent ponds based on habitat characteristics?
+
+```{r PCA on habitat variables: add ellipses for temporary or permanent ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Habitat$Hydrology)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+
+```
+
+Again, we observe the same differentiation between temporary and permanent ponds as what was observed for crayfish presence and pond renovation.
+
+
+# 2- Community composition
+
+Now we repeat the same analyses for community composition with abundance data.
+We create the community dataset by subselecting columns on species abundances.
+
+```{r organize species table}
+Community <- Variables %>% dplyr::select("Dytiscidae", "DyticsLarva", "Odonata", "Diptera", "Gammarus", "Agile_frog", "Notonecta", "Corixidae", "Physa", "FishCPUE", "Tree_frog", "Marbled_newtCPUE", "Palmate_newt")
+rownames(Community) <- Variables$Pond
+
+colnames(Community)
+```
+
+They are:   
+  * Dytiscidae,   
+  * Dytiscidae larva,   
+  * Odonata larva,   
+  * Diptera larva,   
+  * Gammarus,   
+  * Agile frog larva,   
+  * Notonecta,   
+  * Corixidae,   
+  * Physa,   
+  * Fish,   
+  * Tree fog larva,   
+  * Marbled newt,   
+  * and Palmate newt.   
+    
+We do not run analyses on species presence/absence because they were not identified down to the species level. We run a PCA on these species abundances and see if they differ depending on crayfish presence or absence.
+
+```{r PCA on community variables: eigenvalues, fig.height = 3, fig.width=4}
+pca <- dudi.pca(Community, center = TRUE, scale = TRUE, scannf = FALSE)
+#Variance explained by each axis (eigen values): choose the number of axes
+fviz_eig(pca)
+#screeplot(pca, main = "Screeplot - Eigenvalues") #ade4
+eig.val <- get_eigenvalue(pca)
+eig.val #61 + 13 = 61% of variance explained by the first two axes
+``` 
+
+45% of the variance in habitat characteristics is explained by the two first axes of the PCA. We continue by plotting the variables in the PCA space.
+
+```{r PCA on community variables: plot PCA variables, fig.height = 3, fig.width=4}
+
+fviz_pca_var(pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)# Avoid text overlapping     
+
+res.var <- get_pca_var(pca)
+paste("Contribution of the variables to the two first axes")
+# res.var$coord          # Coordinates
+round(res.var$contrib,2)        # Contributions to the PCs
+# round(res.var$cos2,2)           # Quality of representation 
+```
+
+The first axis is inversely representative of: odonata, and all amphibians.
+The second axis is mostly a gradient of dytics, positively for adults and negatively for larva.
+
+Now we plot the individuals (the ponds) on this representation.
+
+```{r PCA on community variables: plot PCA individuals, fig.height = 3, fig.width=4}
+
+fviz_pca_ind(pca, col.ind="cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+
+# Results for individuals
+res.ind <- get_pca_ind(pca)
+paste("Quality of representation of the individuals on the two first axes")
+# res.ind$coord          # Coordinates
+# res.ind$contrib        # Contributions to the PCs
+round(res.ind$cos2,2)           # Quality of representation 
+```
+
+Most ponds are colored in red and orange, meaning they are correctly represented on the PCA axes.
+
+
+We plot both variables and individuals together to have a better idea of the representation.
+
+```{r PCA on community variables: biplot PCA variables and individuals, fig.height = 3, fig.width=4}
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "contrib",
+                gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+
+```
+
+
+## 2a. Uninvaded vs invaded ponds
+
+Finally, we add ellipses on invaded and uninvaded ponds to see if ponds differ in their characteristics based on this variable.
+
+
+```{r PCA on community variables: add ellipses for invaded or non-invaded ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Variables$Crayfish01)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+
+``` 
+
+This representation reveals that there is a huge difference between invaded (red) and uninvaded (blue) ponds based on species abundance in the community. This difference is mostly seen on the first axis, which represents odonata and amphibians.
+Thus, crayfish is mostly present in ponds where amphibians are absent or present at low densities, but this does not imply a relation of causality.
+
+
+## 2b. Renovated vs. non-renovated ponds
+
+*Side note:* is there a difference between renovated and non-renovated ponds based on community abundances?
+
+```{r PCA on community variables: add ellipses for renovated or non-renovated ponds,  fig.height = 4, fig.width=5}
+groups <- as.factor(Variables$Renovation)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+```
+
+We observe that the difference in community composition is far less important between renovated or non-renovated ponds.
+
+
+## 2c. Temporary vs. permanent ponds
+
+*Side note 2:* is there a difference between temporary and permanent ponds based on community abundances?
+
+```{r PCA on community abundances: add ellipses for temporary or permanent ponds, fig.height = 4, fig.width=5}
+groups <- as.factor(Variables$Hydrology)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+
+```
+
+Finally, there is no difference in community composition based on the hydrology of the pond.
+
+
+# 3- Hypothesis-driven variables
+
+Now we repeat the same analyses, but we only take a subset of variables that we think could have an influence on trophic networks. Indeed, invaded and uninvaded ponds may differ in habitat characteristics without it having any influence on the trophic networks, which is our feature of interest.
+
+```{r organize hypothesis-driven table}
+Hypdriven <- Variables %>% dplyr::select("Dytiscidae", "DyticsLarva", "FishCPUE", "Area", "Canopycover", "Aq_VegCover")
+rownames(Hypdriven) <- Variables$Pond
+colnames(Hypdriven)
+```
+
+We thus select:
+    - Dytiscidae, dytiscidae larva, and fish, because they are top predators that can change the shape of trophic networks,  
+    - Area, because it is a well-known factor of influence,  
+    - Canopy cover and aquatic vegetation cover, because they change the basal resources composition  
+  
+  
+
+```{r PCA on hyp-driven variables: eigenvalues, fig.height = 3, fig.width=4}
+
+pca <- dudi.pca(Hypdriven, center = TRUE, scale = TRUE, scannf = FALSE)
+#Variance explained by each axis (eigen values): choose the number of axes
+fviz_eig(pca)
+eig.val <- get_eigenvalue(pca)
+eig.val
+``` 
+
+58% of the variance is explained by the two first axes of the PCA. We continue by plotting the variables in the PCA space.
+
+```{r PCA on hyp-driven variables: plot PCA variables, fig.height = 3, fig.width=4}
+fviz_pca_var(pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)# Avoid text overlapping     
+
+
+res.var <- get_pca_var(pca)
+paste("Contribution of the variables to the two first axes")
+# res.var$coord          # Coordinates
+round(res.var$contrib,2)        # Contributions to the PCs
+# round(res.var$cos2,2)           # Quality of representation 
+```
+
+The first axis is representative of dytiscidae, canopy cover and aquatic vegetation cover.
+The second axis is representative of dyticids larva and area.
+
+Now we plot the individuals (the ponds) on this representation.
+
+```{r PCA on hyp-driven variables: plot PCA individuals, fig.height = 3, fig.width=4}
+fviz_pca_ind(pca, col.ind="cos2", gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+# s.label(pca$li, xax = 1, yax = 2) #ade4
+
+# Results for individuals
+res.ind <- get_pca_ind(pca)
+paste("Quality of representation of the individuals on the two first axes")
+# res.ind$coord          # Coordinates
+# res.ind$contrib        # Contributions to the PCs
+round(res.ind$cos2,2)           # Quality of representation 
+```
+
+We plot both variables and individuals together to have a better idea of the representation.
+
+```{r PCA on hyp-driven variables: biplot PCA variables and individuals, fig.height = 3, fig.width=4}
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "contrib",
+                gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"))
+```
+
+
+## 3a. Uninvaded vs. invaded ponds
+
+Finally, we add ellipses on invaded and uninvaded ponds to see if ponds differ in their characteristics based on this variable.
+
+```{r PCA on hyp-driven variables: add ellipses for invaded or non-invaded ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Variables$Crayfish01)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+``` 
+
+This representation reveals that there is a huge difference between invaded (red) and uninvaded (blue) ponds based on the hypothesis-driven variables. This difference is mostly seen on the first axis, which represents dytics and pond resources.
+
+
+## 3b. Renovated vs. non-renovated ponds
+
+*Side note:* is there a difference between renovated and non-renovated ponds based on hypothesis-driven variables?
+
+```{r PCA on hyp-driven variables: add ellipses for renovated or non-renovated ponds, fig.height = 4, fig.width=5}
+
+groups <- as.factor(Variables$Renovation)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+```
+
+We observe that the difference in community composition is far less important between renovated or non-renovated ponds.
+
+
+## 3c. Temporary vs. permanent ponds
+*Side note 2:* is there a difference between temporary and permanent ponds based on hyp-driven variables?
+
+```{r PCA on hyp-driven variables: add ellipses for temporary or permanent ponds, fig.height = 4, fig.width=5}
+groups <- as.factor(Variables$Hydrology)
+
+fviz_pca_biplot(pca, repel = TRUE,
+                col.var = "#000000", # Variables color
+                col.ind = groups,
+                palette = c("#00AFBB",  "#FC4E07"),
+                addEllipses = TRUE, # Concentration ellipses
+                ellipse.type = "confidence",
+                legend.title = "Groups")  # Individuals color
+
+```
+
+Finally, the difference between invaded and uninvaded ponds is less important based on the hydrology of the pond.
+
+
+# 4- Conclusion
+
+There is a covariability between crayfish presence, ponds not being renovated, and water permanence. Because crayfish presence is the variable that shows the most marked differences between ponds, it is possible that the observed differences are primarily linked to crayfish presence. For example, we know that ponds have been renovated because they were uninvaded.
+
+It is necessary to keep in mind these differences between ponds that are associated to crayfish presence along the analyses of isotopic niches.
+
