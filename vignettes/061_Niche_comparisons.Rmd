@@ -49,7 +49,7 @@ library(purrr)
 ```
 
 ```{r load datasets global}
-Metrics_complete <- read.csv(file.path(here(), "exported_data", "Complete_metrics_species.csv"), h = T)
+# Metrics_complete <- read.csv(file.path(here(), "exported_data", "Complete_metrics_species.csv"), h = T)
 ```
 
 
@@ -60,10 +60,10 @@ Mean_position <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc_
 names(Mean_position)[3] <- "Code"
 
 
-#Load datasets without outliers
-Niche_metrics_wo <- read.csv(file.path(here(), "exported_data", "Population_metrics.csv"), h = T)
-Mean_position_wo <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc.csv"), header = T)
-names(Mean_position_wo)[3] <- "Code"
+# #Load datasets without outliers
+# Niche_metrics_wo <- read.csv(file.path(here(), "exported_data", "Population_metrics.csv"), h = T)
+# Mean_position_wo <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc.csv"), header = T)
+# names(Mean_position_wo)[3] <- "Code"
 ```
 
 
@@ -418,6 +418,97 @@ wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 # Test
 ```
 
+Permutation paired t-test: crayfish/agile frog
+```{r permut tests}
+metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
+head(metrics)
+dim(metrics)
+
+
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
+head(metrics_pivoted)
+dim(metrics_pivoted)
+
+# Test par permutation sur la différence de moyenne: TAcp
+library(PairedData)
+
+# Calculate the difference
+metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Agile frog`,
+                            diffCR = CRcp_Crayfish - `CRcp_Agile frog`,
+                            diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
+                            diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`,
+                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Agile frog`)
+
+
+# permutation test: set the number of permutations 
+sim <- 10^4 #number of permutations
+permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
+permCR <- rep(NA, sim) 
+permNR <- rep(NA, sim) #
+permSEAc <- rep(NA, sim) #
+permSDNND <- rep(NA, sim) #
+
+
+k <- nrow(metrics_pivoted)# number of individuals to sample/permute
+set.seed(2022) # make sure the results are going to be the same
+
+# permute data
+for (i in 1:sim) {
+  # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
+tirage = sample(c(-1,1), size = k, replace = T)
+permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
+permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+}
+
+permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
+permCR[10000] = mean(metrics_pivoted$diffCR)
+permNR[10000] = mean(metrics_pivoted$diffNR)
+permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
+permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
+
+# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
+# avant et apres, sous l'hypothese nulle
+hist(perm)#xlim=c(-0.05,0.05))
+abline(v = perm[10000], lty = 2, col = "red")
+limdiff = quantile(perm, c(.025,.975))
+limdiff
+abline(v=limdiff[1])
+abline(v=limdiff[2])
+
+
+# Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
+# a la difference observee entre les moyennes
+tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+#enfin, calcule la valeur de p
+pTA = tablepropTA[2]/10000
+pTA
+
+tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+#enfin, calcule la valeur de p
+pCR = tablepropCR[2]/10000
+pCR
+
+tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
+#enfin, calcule la valeur de p
+pNR = tablepropNR[2]/10000
+pNR
+
+tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
+#enfin, calcule la valeur de p
+pSEAc = tablepropSEAc[2]/10000
+pSEAc
+
+tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+#enfin, calcule la valeur de p
+pSDNND = tablepropSDNND[2]/10000
+pSDNND
+
+```
+
+
 Tree frog/All crayfish (n = 4)
 ```{r test differences all crayfish and tree frog}
 # Composed estimates
@@ -452,6 +543,98 @@ wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 
 # No difference
 ```
+
+
+Permutation paired t-test: crayfish/agile frog
+```{r permut tests}
+metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
+head(metrics)
+dim(metrics)
+
+
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
+head(metrics_pivoted)
+dim(metrics_pivoted)
+
+# Test par permutation sur la différence de moyenne: TAcp
+library(PairedData)
+
+# Calculate the difference
+metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Tree frog`,
+                            diffCR = CRcp_Crayfish - `CRcp_Tree frog`,
+                            diffNR = NRcp_Crayfish - `NRcp_Tree frog`,
+                            diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`,
+                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Tree frog`)
+
+
+# permutation test: set the number of permutations 
+sim <- 10^4 #number of permutations
+permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
+permCR <- rep(NA, sim) 
+permNR <- rep(NA, sim) #
+permSEAc <- rep(NA, sim) #
+permSDNND <- rep(NA, sim) #
+
+
+k <- nrow(metrics_pivoted)# number of individuals to sample/permute
+set.seed(2022) # make sure the results are going to be the same
+
+# permute data
+for (i in 1:sim) {
+  # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
+tirage = sample(c(-1,1), size = k, replace = T)
+permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
+permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+}
+
+permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
+permCR[10000] = mean(metrics_pivoted$diffCR)
+permNR[10000] = mean(metrics_pivoted$diffNR)
+permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
+permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
+
+# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
+# avant et apres, sous l'hypothese nulle
+# hist(perm)#xlim=c(-0.05,0.05))
+# abline(v = perm[10000], lty = 2, col = "red")
+# limdiff = quantile(perm, c(.025,.975))
+# limdiff
+# abline(v=limdiff[1])
+# abline(v=limdiff[2])
+
+
+# Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
+# a la difference observee entre les moyennes
+tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+#enfin, calcule la valeur de p
+pTA = tablepropTA[2]/10000
+pTA #no diff
+
+tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+#enfin, calcule la valeur de p
+pCR = tablepropCR[2]/10000
+pCR # no diff
+
+tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
+#enfin, calcule la valeur de p
+pNR = tablepropNR[2]/10000
+pNR #no diff
+
+tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
+#enfin, calcule la valeur de p
+pSEAc = tablepropSEAc[2]/10000
+pSEAc # no difference
+
+tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+#enfin, calcule la valeur de p
+pSDNND = tablepropSDNND[2]/10000
+pSDNND # no difference
+
+```
+
 
 Palmate newt/All crayfish (n = 5)
 ```{r test differences crayfish adult and palmate newt}
@@ -496,6 +679,99 @@ wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 
 # No difference
 ```
+
+
+Permutation paired t-test: crayfish/palmate newt
+```{r permut tests}
+metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
+head(metrics)
+dim(metrics)
+
+
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
+head(metrics_pivoted)
+dim(metrics_pivoted)
+
+# Test par permutation sur la différence de moyenne: TAcp
+library(PairedData)
+
+# Calculate the difference
+metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Palmate newt`,
+                            diffCR = CRcp_Crayfish - `CRcp_Palmate newt`,
+                            diffNR = NRcp_Crayfish - `NRcp_Palmate newt`,
+                            diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`,
+                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Palmate newt`)
+
+
+# permutation test: set the number of permutations 
+sim <- 10^4 #number of permutations
+permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
+permCR <- rep(NA, sim) 
+permNR <- rep(NA, sim) #
+permSEAc <- rep(NA, sim) #
+permSDNND <- rep(NA, sim) #
+
+
+k <- nrow(metrics_pivoted)# number of individuals to sample/permute
+set.seed(2022) # make sure the results are going to be the same
+
+# permute data
+for (i in 1:sim) {
+  # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
+tirage = sample(c(-1,1), size = k, replace = T)
+permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
+permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+}
+
+permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
+permCR[10000] = mean(metrics_pivoted$diffCR)
+permNR[10000] = mean(metrics_pivoted$diffNR)
+permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
+permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
+
+# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
+# avant et apres, sous l'hypothese nulle
+# hist(perm)#xlim=c(-0.05,0.05))
+# abline(v = perm[10000], lty = 2, col = "red")
+# limdiff = quantile(perm, c(.025,.975))
+# limdiff
+# abline(v=limdiff[1])
+# abline(v=limdiff[2])
+
+
+# Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
+# a la difference observee entre les moyennes
+tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+#enfin, calcule la valeur de p
+pTA = tablepropTA[2]/10000
+pTA
+
+tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+#enfin, calcule la valeur de p
+pCR = tablepropCR[2]/10000
+pCR
+
+tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
+#enfin, calcule la valeur de p
+pNR = tablepropNR[2]/10000
+pNR
+
+tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
+#enfin, calcule la valeur de p
+pSEAc = tablepropSEAc[2]/10000
+pSEAc
+
+tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+#enfin, calcule la valeur de p
+pSDNND = tablepropSDNND[2]/10000
+pSDNND
+
+```
+
+
 
 Marbled newt/All crayfish (n = 0)
 
