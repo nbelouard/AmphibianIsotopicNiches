@@ -21,7 +21,10 @@ editor_options:
 
 # 1. Setup
 
-This vignette compares niche metrics between the different study species in ponds
+This vignette compares niche metrics between the different study species in ponds.
+Only SEAc and NR are compared because all metrics are extremely correlated to them.
+CDreg (the distance between the centroid of each population and the centroid of the regional niche of the species) is added even though it is also very correlated to the other metrics, for exploratory purposes.
+
 We begin by loading the required libraries and datasets.
 
 ```{r setup, warning = FALSE, message = FALSE}
@@ -36,14 +39,19 @@ library(PairedData)
 ```{r load datasets per pop}
 Niche_metrics <- read.csv(file.path(here(), "data", "Population_metrics_complete.csv"), h = T)
 Mean_position <- read.csv(file.path(here(), "data", "Meanposition_SEAc_complete.csv"), header = T)
+CDreg <- read.csv(file.path(here(), "exported_data", "CD_global.csv"), header = T)
 ```
 
-We merge both datasets (one contains the Layman metrics and the other the SEAc).
+We merge datasets (one contains the Layman metrics, one the SEAc, the last one CDregional).
 
 ```{r merge datasets}
 # Rename a column in one dataset so it is common with the other dataset
 Mean_position %<>% rename(Code = Pop)
 Pop_metrics <- merge(Niche_metrics, Mean_position, by = c("Pond", "Code"))
+
+# select only the columns we are interested in
+CDreg %<>% dplyr::select(Code, Species, CDcp) %>% rename(Pond = Code, CDreg = CDcp)  
+Pop_metrics <- merge(Pop_metrics, CDreg, by = c("Pond", "Species"))
 ```
 
 
@@ -60,7 +68,8 @@ metrics %<>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949))
 
 metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = mean(SEAc),
-                                             meanNR = mean(NRcp)
+                                             meanNR = mean(NRcp),
+                                             meanCDreg = mean(CDreg)
                                              )
 ```
 
@@ -73,18 +82,21 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 5, p-value = 0.03906 *
 
+wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
+# V = 5, p-value = 0.03906 *
 ```
 
 ### Paired permutation tests 
 ```{r permut tests agile frog/crayfish}
-metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, CDreg, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc, CDreg))
 
 # Test par permutation sur la différence de moyenne :
 # Calculate the difference between the two species
 metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`,
+                            diffCDreg = CDreg_Crayfish - `CDreg_Agile frog`
                             )
 
 
@@ -94,6 +106,7 @@ sim <- 10^4 #number of permutations
 #create an empty vector to store the simulated averages
 permNR <- rep(NA, sim)
 permSEAc <- rep(NA, sim) 
+permCDreg <- rep(NA, sim) 
 
 k <- nrow(metrics_pivoted) # number of individuals to sample/permute
 set.seed(2022) # make sure the results are going to be the same every time we run the code
@@ -102,15 +115,16 @@ set.seed(2022) # make sure the results are going to be the same every time we ru
 for (i in 1:sim) { #in each simulation
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 # append the average in the vector
+permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCDreg[i] = mean(metrics_pivoted$diffCDreg * tirage)
 }
 
 #add the observed difference as the final item in the vector
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-
+permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes, puis calcule la valeur de p
@@ -122,6 +136,10 @@ pNR #p =0.0419
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 pSEAc = tablepropSEAc[2]/10000
 pSEAc # p = 0.008
+
+tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
+pCDreg = tablepropCDreg[2]/10000
+pCDreg # p = 0.0342
 
 ```
 
@@ -137,7 +155,8 @@ metrics %<>% filter(Pond %in% c(66, 89, 91, 949))
 
 metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = mean(SEAc),
-                                             meanNR = mean(NRcp)
+                                             meanNR = mean(NRcp),
+                                             meanCDreg = mean(CDreg)
                                              )
 ```
 
@@ -150,20 +169,24 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 #V = 2, p-value = 0.375
 
+wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
+#V = 4, p-value = 0.875
+
 ```
 
 
 ### Paired permutation tests
 ```{r permut tests tree frog crayfish, echo = FALSE}
-metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, CDreg, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc, CDreg))
 
 
 # Test par permutation sur la différence de moyenne: TAcp
 # Calculate the difference
 metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Tree frog`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`,
+                            diffCDreg = CDreg_Crayfish - `CDreg_Tree frog`
                             )
 
 
@@ -171,7 +194,7 @@ metrics_pivoted %<>% mutate(
 sim <- 10^4 #number of permutations
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-
+permCDreg <- rep(NA, sim)
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
 set.seed(2022) # make sure the results are going to be the same
@@ -182,11 +205,12 @@ for (i in 1:sim) {
 tirage = sample(c(-1,1), size = k, replace = T)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCDreg[i] = mean(metrics_pivoted$diffCDreg * tirage)
 }
 
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
+permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
@@ -201,6 +225,11 @@ pSEAc = tablepropSEAc[2]/10000
 pSEAc 
 tablepropSEAc
 print("All simulations are TRUE, so p > 0.9999, no difference")
+
+print("p-value for CDreg")
+tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
+pCDreg = tablepropCDreg[2]/10000
+pCDreg #p = 0.8803 no diff
 
 ```
 
@@ -217,7 +246,8 @@ metrics %<>% filter(Pond %in% c(111, 112, 66, 91, 949))
 
 metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = round(mean(SEAc),2),
-                                             meanNR = round(mean(NRcp),2)
+                                             meanNR = round(mean(NRcp),2),
+                                             meanCDreg = round(mean(CDreg),2)
                                              )
 ```
 
@@ -230,19 +260,23 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 10, p-value = 0.625
 
+wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
+# V = 13, p-value = 0.1875
+
 ```
 
 
 ### Paired permutation tests 
 ```{r permut tests palmate newt crayfish, echo = FALSE}
-metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, CDreg, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc, CDreg))
 
 # Test par permutation sur la différence de moyenne: 
 # Calculate the difference
 metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Palmate newt`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`,
+                            diffCDreg = CDreg_Crayfish - `CDreg_Palmate newt`
                             )
 
 
@@ -250,7 +284,7 @@ metrics_pivoted %<>% mutate(
 sim <- 10^4 #number of permutations
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-
+permCDreg <- rep(NA, sim)
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
 set.seed(2022) # make sure the results are going to be the same
@@ -261,10 +295,12 @@ for (i in 1:sim) {
 tirage = sample(c(-1,1), size = k, replace = T)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+permCDreg[i] = mean(metrics_pivoted$diffCDreg * tirage)
 }
 
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
+permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
@@ -278,6 +314,11 @@ print("p-value for SEAc")
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 pSEAc = tablepropSEAc[2]/10000
 pSEAc # p = 0.0652
+
+print("p-value for CDreg")
+tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
+pCDreg = tablepropCDreg[2]/10000
+pCDreg # p = 0.1935
 
 ```
 

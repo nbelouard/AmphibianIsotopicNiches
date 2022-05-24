@@ -930,6 +930,39 @@ Layman_marbled$Code <- rownames(Layman_marbled)
 Layman_marbled %<>% mutate(Species = "Marbled newt") 
 ```
 
+Calculate Layman metrics - crayfish pop vs global
+```{r calculate Layman metrics for crayfish, include=FALSE}
+
+# Select agile frog
+head(Pop_Dataset_Complete)
+Crayfish_dataset <- Pop_Dataset_Complete %>% filter(TaxaUsed == "Crayfish")
+head(Crayfish_dataset)
+
+# Create ponds
+spx <- split(Crayfish_dataset$D13Ccor_consoI, Crayfish_dataset$Pond, drop = TRUE)
+length(spx)
+
+spy <- split(Crayfish_dataset$TP, Crayfish_dataset$Pond, drop = TRUE)
+length(spy)
+
+Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
+
+for (i in 1:length(spx)) {  
+  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
+  Data <- as.data.frame(Metrics$metrics)
+  Data$metrics <- rownames(Data)
+  colnames(Data)[1] <- names(spx[i])
+  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
+}
+
+Layman_crayfish <- as.data.frame(t(Table))
+colnames(Layman_crayfish) <- Layman_crayfish[1,]
+Layman_crayfish <- Layman_crayfish[-1,]
+Layman_crayfish$Code <- rownames(Layman_crayfish)
+Layman_crayfish %<>% mutate(Species = "Crayfish") 
+
+```
+
 
 ## Bootstrapped version
 Now we calculate the equivalent using the bootstrapping method. For each pop, we sample 10 individuals in the population, calculate the 6 metrics of Layman, then do it again 999 times.
@@ -1130,15 +1163,65 @@ Marbled_bootstrapped <- as.data.frame(cbind(
 
 ```
 
+Crayfish
+```{r calculate Layman metrics with bootstrapping for crayfish, include=FALSE}
+
+# Make sure we find the same results everytime by setting the seed
+set.seed(10)
+
+# We group samples by pond and species again
+spx <- split(Crayfish_dataset$D13Ccor_consoI, 
+             Crayfish_dataset$Pond, drop = TRUE)
+length(spx)
+
+spy <- split(Crayfish_dataset$TP,
+             Crayfish_dataset$Pond, drop = TRUE)
+length(spy)
+
+# Number of bootstrapped required
+nr <- 9999 # the number of reps
+ncol = length(spy)
+
+# Create empty vectors to store the results 
+CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
+MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
+SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
+
+names(CD)<-names(spx)
+names(MNND)<-names(spx)
+names(SDNND)<-names(spx)
+
+for (j in 1:length(spx)) {
+  if (length(spx[[j]]) > 10) {
+    for (i in 1:nr) {
+      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
+      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
+      layman <- laymanmetrics(simX, simY)
+      CD[i,j] <- layman$CD
+      MNND[i,j] <- layman$MNND
+      SDNND[i,j] <- layman$SDNND
+    }
+    }
+}
+
+Crayfish_bootstrapped <- as.data.frame(cbind(
+                                  CDb = colMeans(CD), 
+                                  MNNDb = colMeans(MNND), 
+                                  SDNNDb = colMeans(SDNND),
+                                  Code = colnames(CD)))
+
+```
+
 
 ## Merge all datasets
 ```{r merge CD tables to create CDcp}
 
 CD_global <- rbind(
-  merge(Layman_agile %>% select(Code, CD, NND, SDNND, Species), Agile_bootstrapped, by = "Code"),
-  merge(Layman_treefrog %>% select(Code, CD, NND, SDNND, Species), Treefrog_bootstrapped, by = "Code"),
-  merge(Layman_palmate %>% select(Code, CD, NND, SDNND, Species), Palmate_bootstrapped, by = "Code"),
-  merge(Layman_marbled %>% select(Code, CD, NND, SDNND, Species), Marbled_bootstrapped, by = "Code")
+  merge(Layman_agile %>% dplyr::select(Code, CD, NND, SDNND, Species), Agile_bootstrapped, by = "Code"),
+  merge(Layman_treefrog %>% dplyr::select(Code, CD, NND, SDNND, Species), Treefrog_bootstrapped, by = "Code"),
+  merge(Layman_palmate %>% dplyr::select(Code, CD, NND, SDNND, Species), Palmate_bootstrapped, by = "Code"),
+  merge(Layman_marbled %>% dplyr::select(Code, CD, NND, SDNND, Species), Marbled_bootstrapped, by = "Code"),
+  merge(Layman_crayfish %>% dplyr::select(Code, CD, NND, SDNND, Species), Crayfish_bootstrapped, by = "Code")
 )
 
 #Create a composite metric to avoid NAs in bootstrapped metrics

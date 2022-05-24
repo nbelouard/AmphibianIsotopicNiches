@@ -52,13 +52,15 @@ Mean_position_complete <- read.csv(file.path(here(), "exported_data", "Meanposit
 names(Mean_position_complete)[3] <- "Code"
 
 CD_global <- read.csv(file.path(here(), "exported_data", "CD_global.csv"))
-CD_global %<>% dplyr::select(Code, Species, CDcp, MNNDcp, SDNNDcp) 
+CD_global %<>% dplyr::select(Code, Species, CDcp, MNNDcp, SDNNDcp)
 CD_global %<>% rename(Pond = Code,
                       CDg = CDcp,
                       MNNDg = MNNDcp,
                       SDNNDg = SDNNDcp
-                      ) 
+                      )
 
+# tableCD <- CD_global %>% dplyr::select(Pond, Species, CDg) %>% pivot_wider(names_from = Species, values_from = CDg)
+# write.csv(tableCD, file.path(here(), "exported_data", "tableCD.csv"), row.names = F)
 ```
 
 ```{r merge datasets}
@@ -109,7 +111,9 @@ First, we test the correlation between metrics, in order to determine whether so
 
 ```{r compare metrics, include=FALSE}
 
-Correlation <- merge(CD_global %>% dplyr::select(-MNNDg, -SDNNDg), Pop_amphib_complete %>% dplyr::select(Pond, Species, NRcp, CRcp, TAcp, SEAc))
+Correlation <- merge(CD_global %>% dplyr::select(-MNNDg, -SDNNDg), 
+                     Pop_amphib_complete %>% 
+                       dplyr::select(Pond, Species, NRcp, CRcp, TAcp, SEAc))
 head(Correlation)
 
 Metrics <- Correlation %>% dplyr::select(-Pond, -Species) 
