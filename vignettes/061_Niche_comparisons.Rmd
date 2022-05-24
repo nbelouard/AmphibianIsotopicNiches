@@ -57,22 +57,14 @@ metrics_agile <- Pop_metrics %>% filter(Species == "Agile frog")
 metrics <- rbind(metrics_crayfish, metrics_agile)
 metrics %<>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949))
 
-metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = median(TAcp),
+metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = mean(SEAc),
-                                             meanNR = mean(NRcp),
-                                             # medianCR = median(CRcp),
-                                             # medianCD = median(CDcp),
-                                             # medianMNND = median(MNNDcp),
-                                             # medianSDNND = median(SDNNDcp),
-                                             # medianD13C = median(D13Cavg),
-                                             # medianTP = median(TPavg)
+                                             meanNR = mean(NRcp)
                                              )
 ```
 
 Wilcoxon tests
 ```{r wilcoxon tests agile frog crayfish}
-# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 1, p-value = 0.007812 **
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 # V = 1, p-value = 0.007812 **
@@ -80,19 +72,6 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 5, p-value = 0.03906 *
 
-# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 6, p-value = 0.05469 .
-
-# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 7, p-value = 0.07422 .
-
-# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 **
-
-# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 **
-
-# Difference found in TA, SEAc, NR, TP and D13C
 ```
 
 Paired permutation test 
@@ -102,11 +81,9 @@ metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(N
 
 # Test par permutation sur la différence de moyenne:
 # Calculate the difference between the two species
-metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Agile frog`,
-                            # diffCR = CRcp_Crayfish - `CRcp_Agile frog`,
+metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`,
-                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Agile frog`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`
                             )
 
 
@@ -114,11 +91,8 @@ metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Agile frog`,
 sim <- 10^4 #number of permutations
 
 #create an empty vector to store the simulated averages
-# permTA <- rep(NA, sim) 
-# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-# permSDNND <- rep(NA, sim) #
 
 k <- nrow(metrics_pivoted) # number of individuals to sample/permute
 set.seed(2022) # make sure the results are going to be the same every time we run the code
@@ -127,31 +101,17 @@ set.seed(2022) # make sure the results are going to be the same every time we ru
 for (i in 1:sim) { #in each simulation
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
 #add the observed difference
-# permTA[10000] = mean(metrics_pivoted$diffTA) 
-# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes, puis calcule la valeur de p
-
-# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
-# pTA = tablepropTA[2]/10000
-# pTA
-
-# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
-# pCR = tablepropCR[2]/10000
-# pCR
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
@@ -160,10 +120,6 @@ pNR #p =0.0419
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 pSEAc = tablepropSEAc[2]/10000
 pSEAc # p = 0.008
-
-# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
-# pSDNND = tablepropSDNND[2]/10000
-# pSDNND
 
 ```
 
@@ -177,22 +133,14 @@ metrics_treefrog <- Pop_metrics %>% filter(TaxaUsed == "Tree frog")
 metrics <- rbind(metrics_crayfish, metrics_treefrog)
 metrics %<>% filter(Pond %in% c(66, 89, 91, 949))
 
-metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = median(TAcp),
+metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = mean(SEAc),
-                                             meanNR = mean(NRcp),
-                                             # medianCR = median(CRcp),
-                                             # medianCD = median(CDcp),
-                                             # medianMNND = median(MNNDcp),
-                                             # medianSDNND = median(SDNNDcp),
-                                             # medianD13C = median(D13Cavg),
-                                             # medianTP = median(TPavg)
+                                             meanNR = mean(NRcp)
                                              )
 ```
 
 Wilcoxon tests
 ```{r wilcoxon tests tree frog crayfish}
-# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 6, p-value = 0.875
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 # V = 4, p-value = 0.875
@@ -200,19 +148,6 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 #V = 2, p-value = 0.375
 
-# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 7, p-value = 0.625
-
-# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 10, p-value = 0.125
-
-# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-# No difference
 ```
 
 
@@ -224,21 +159,16 @@ metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(N
 
 # Test par permutation sur la différence de moyenne: TAcp
 # Calculate the difference
-metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Tree frog`,
-                            # diffCR = CRcp_Crayfish - `CRcp_Tree frog`,
+metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Tree frog`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`,
-                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Tree frog`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`
                             )
 
 
 # permutation test: set the number of permutations 
 sim <- 10^4 #number of permutations
-# permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
-# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-# permSDNND <- rep(NA, sim) #
 
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
@@ -248,47 +178,27 @@ set.seed(2022) # make sure the results are going to be the same
 for (i in 1:sim) {
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
-# permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
-# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
 # permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
-#enfin, calcule la valeur de p
-# pTA = tablepropTA[2]/10000
-# pTA #no diff
-
-# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
-#enfin, calcule la valeur de p
-# pCR = tablepropCR[2]/10000
-# pCR # no diff
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
-#enfin, calcule la valeur de p
 pNR = tablepropNR[2]/10000
 pNR #p = 0.3816 no diff
 
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
-#enfin, calcule la valeur de p
+
 pSEAc = tablepropSEAc[2]/10000
 pSEAc 
 tablepropSEAc
 # All simulations are TRUE, so p > 0.9999, no difference
-
-# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
-#enfin, calcule la valeur de p
-# pSDNND = tablepropSDNND[2]/10000
-# pSDNND # no difference
 
 ```
 
@@ -303,22 +213,14 @@ metrics_palmate <- Pop_metrics %>% filter(TaxaUsed == "Palmate newt")
 metrics <- rbind(metrics_crayfish, metrics_palmate)
 metrics %<>% filter(Pond %in% c(111, 112, 66, 91, 949))
 
-metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = round(median(TAcp),2),
+metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanSEAc = round(mean(SEAc),2),
-                                             meanNR = round(mean(NRcp),2),
-                                             #medianCR = round(median(CRcp),2),
-                                             # medianCD = round(median(CDcp),2),
-                                             # medianMNND = round(median(MNNDcp),2),
-                                             #medianSDNND = round(median(SDNNDcp),2),
-                                             #medianD13C = round(median(D13Cavg),2),
-                                             #medianTP = round(median(TPavg),2)
+                                             meanNR = round(mean(NRcp),2)
                                              )
 ```
 
 Wilcoxon tests
 ```{r wilcoxon tests palmate newt crayfish}
-# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625 .
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 # V = 15, p-value = 0.0625 .
@@ -326,19 +228,6 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 10, p-value = 0.625
 
-# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625 .
-
-# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625 .
-
-# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.0625 .
-
-# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
-#V = 9, p-value = 0.8125
-
-# No difference
 ```
 
 
@@ -349,21 +238,16 @@ metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(N
 
 # Test par permutation sur la différence de moyenne: 
 # Calculate the difference
-metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Palmate newt`,
-                            # diffCR = CRcp_Crayfish - `CRcp_Palmate newt`,
+metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Palmate newt`,
-                            diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`,
-                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Palmate newt`
+                            diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`
                             )
 
 
 # permutation test: set the number of permutations 
 sim <- 10^4 #number of permutations
-# permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
-# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-# permSDNND <- rep(NA, sim) #
 
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
@@ -373,46 +257,24 @@ set.seed(2022) # make sure the results are going to be the same
 for (i in 1:sim) {
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
-# permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
-# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
-#enfin, calcule la valeur de p
-# pTA = tablepropTA[2]/10000
-# pTA
-
-# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
-#enfin, calcule la valeur de p
-# pCR = tablepropCR[2]/10000
-# pCR
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
-#enfin, calcule la valeur de p
 pNR = tablepropNR[2]/10000
 pNR # p = 0.4966
 
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
-#enfin, calcule la valeur de p
 pSEAc = tablepropSEAc[2]/10000
 pSEAc # p = 0.0652
-
-# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
-#enfin, calcule la valeur de p
-# pSDNND = tablepropSDNND[2]/10000
-# pSDNND
 
 ```
 
