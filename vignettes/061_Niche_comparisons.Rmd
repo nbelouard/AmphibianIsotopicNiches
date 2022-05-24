@@ -1,8 +1,7 @@
 ---
-title: "Stable coexistence between four native and one invasive species seen through the lens of isotopic niche analyses #6: Niche comparison"
+title: "Coexistence crayfish/amphibians #6: Niche comparison"
 author: 
-- Nadege Belouard^[EcoBio, nadege.belouard@gmail.com]
-- Jean-Marc Paillisson^[EcoBio, jean-marc.paillisson@univ-rennes1.fr]
+- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "10/08/2020"
 output:
   pdf_document:
@@ -18,380 +17,61 @@ editor_options:
   chunk_output_type: console
 ---
 
-This vignette tests the link between the isotopic niche metrics of amphibians and candidate variables.
-
+This vignette compares niche metrics between the different study species in ponds
 
 # 1. Setup
 
 We begin by loading the required libraries and datasets.
 
-```{r setup, include = FALSE, warning = FALSE, message = FALSE}
-knitr::opts_chunk$set(dpi = 300, echo = params$show_code)
-
-#Load packages
-library(lme4)
-library(car)
-library(MuMIn)
-library(ggplot2)
-library(RVAideMemoire)
-library(ggrepel)
-library(magrittr)
-library(Hmisc)
-library(reshape2)
-library(usdm)
+```{r setup, warning = FALSE, message = FALSE}
 library(tidyr)
 library(dplyr)
-library(tibble)
-library(gridExtra)
+library(magrittr)
+library(reshape2)
 library(here)
-library(broom)
-library(purrr)
+library(PairedData)
 ```
-
-```{r load datasets global}
-# Metrics_complete <- read.csv(file.path(here(), "exported_data", "Complete_metrics_species.csv"), h = T)
-```
-
 
 ```{r load datasets per pop}
-#Load dataset complete
 Niche_metrics <- read.csv(file.path(here(), "exported_data", "Population_metrics_complete.csv"), h = T)
 Mean_position <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc_complete.csv"), header = T)
-names(Mean_position)[3] <- "Code"
-
-
-# #Load datasets without outliers
-# Niche_metrics_wo <- read.csv(file.path(here(), "exported_data", "Population_metrics.csv"), h = T)
-# Mean_position_wo <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc.csv"), header = T)
-# names(Mean_position_wo)[3] <- "Code"
 ```
 
+We merge both datasets (one contains the Layman metrics and the other the SEAc).
 
 ```{r merge datasets}
-
-# Merge niche metrics and mean position
-# Pop_metrics <- merge(Niche_metrics_oneniche, Mean_position_oneniche, by = c("Pond", "Code"))
+# Rename a column in one dataset so it is common with the other dataset
+Mean_position %<>% rename(Code = Pop)
 Pop_metrics <- merge(Niche_metrics, Mean_position, by = c("Pond", "Code"))
-dim(Pop_metrics)[1] == dim(Niche_metrics)[1]
-dim(Pop_metrics)[1] == dim(Mean_position)[1]
-
-Pop_metrics_wo <- merge(Niche_metrics_wo, Mean_position_wo, by = c("Pond", "Code"))
-dim(Pop_metrics_wo)[1] == dim(Niche_metrics_wo)[1]
-dim(Pop_metrics_wo)[1] == dim(Mean_position_wo)[1]
-
-# # Create the variable "Group" to differentiate newts and tadpoles
-# for (i in 1:length(Pop_metrics$Pond)) {
-#   if (Pop_metrics$Taxa[i] %in% c("Agile frog", "Tree frog")) {
-#     Pop_metrics$Group[i] = "Tadpoles"
-#     Pop_metrics$Clade[i] = "Amphibians"
-#   } else if (Pop_metrics$Taxa[i] %in% c("Palmate newt", "Marbled newt")) {
-#     Pop_metrics$Group[i] = "Newts"
-#     Pop_metrics$Clade[i] = "Amphibians"
-#   } else {
-#     Pop_metrics$Group[i] = "Crayfish"
-#     Pop_metrics$Clade[i] = "Crayfish"
-#   }
-# }
-
 ```
 
 
 # 2. Compare crayfish and amphibians niches
 
-## A. Check intra-group differences (DEPRECATED)
-First we begin by checking whether we can group tadpoles together, newts together, and crayfish together
-
-Crayfish adult/juvenile (n = 6) 
-```{r test differences crayfish adult/juvenile}
-
-# Composed estimates
-crayfish_metrics <- Pop_metrics %>% filter(Pond %in% c(1016, 111, 112, 89, 91, 949), 
-                                           Group == "Crayfish") %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TAcp = mean(TAcp),
-            SEAccp = mean(SEAc),
-            NRcp = mean(NRcp),
-            CRcp = mean(CRcp),
-            CDcp = mean(CDcp),
-            MNNDcp = mean(MNNDcp),
-            SDNNDcp = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg),
-            TA = mean(TA),
-            NR = mean(dY_range),
-            CR = mean(dX_range),
-            CD = mean(CD),
-            MNND = mean(NND),
-            SDNND = mean(SDNND)) %>% 
-  pivot_longer(cols = c("TAcp", "SEAccp", "NRcp", "CRcp", "CDcp", "MNNDcp", "SDNNDcp", "D13C", "TP",
-                        "TA", "NR", "CR", "CD", "MNND", "SDNND"), 
-               names_to = "Metric", values_to = "Value") 
-
-
-crayfish_metrics %>% 
-  group_by(Metric) %>% nest() %>% 
-  mutate(model = purrr::map(data, ~wilcox.test(Value ~ Species, data = .x, paired = TRUE))) %>% 
-  mutate(tidy.model = purrr::map(model, ~broom::tidy(.x))) %>%   
-  mutate(p.value = purrr::map_dbl(tidy.model, ~.x$p.value[1]))
-
-
-# Boxplot
-ggplot(aes(x = Metric, y = Value), data = crayfish_metrics) +
-  geom_boxplot(aes(col = Species)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-
-# Difference between crayfish in NR for all estimates
-# And difference in TA for the natural estimates only
-```
-
-
-
-
-## B. Check difference between crayfish and each amphibian species (DEPRECATED)
-
-Agile frog/Crayfish adult (n = 9) 
-```{r test differences crayfish adult and agile frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949), 
-                                           Species %in% c("Ad crayfish", "Agile frog")) %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-wilcox.test(TA~Species,paired=TRUE, data = metrics)
-# V = 39, p-value = 0.05469 
-
-wilcox.test(SEAc~Species,paired=TRUE, data = metrics)
-# V = 39, p-value = 0.05469
-
-wilcox.test(NR~Species,paired=TRUE, data = metrics)
-# V = 37, p-value = 0.09766
-
-wilcox.test(CR~Species,paired=TRUE, data = metrics)
-# V = 32, p-value = 0.3008
-
-wilcox.test(SDNND~Species,paired=TRUE, data = metrics)
-# V = 36, p-value = 0.1289
-
-wilcox.test(D13C~Species,paired=TRUE, data = metrics)
-# V = 45, p-value = 0.003906 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-wilcox.test(TP~Species,paired=TRUE, data = metrics)
-# V = 45, p-value = 0.003906 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-# Differ in D13C, TP
-```
-Tree frog/Crayfish adult (n = 4)
-```{r test differences crayfish adult and tree frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(66, 89, 91, 949), 
-                                           Species %in% c("Ad crayfish", "Tree frog")) %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-wilcox.test(TA~Species,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(SEAc~Species,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(NR~Species,paired=TRUE, data = metrics)
-# V = 2, p-value = 0.375
-
-wilcox.test(CR~Species,paired=TRUE, data = metrics)
-# V = 8, p-value = 0.375
-
-wilcox.test(SDNND~Species,paired=TRUE, data = metrics)
-# V = 5, p-value = 1
-
-wilcox.test(D13C~Species,paired=TRUE, data = metrics)
-#V = 10, p-value = 0.125
-
-wilcox.test(TP~Species,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-# No difference found
-```
-
-Palmate newt/Crayfish adult (n = 5)
-```{r test differences crayfish adult and palmate newt}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(111, 112, 66, 91, 949), 
-                                           Species %in% c("Ad crayfish", "Palmate newt")) %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-wilcox.test(TA~Species,paired=TRUE, data = metrics)
-# V = 13, p-value = 0.1875
-
-wilcox.test(SEAc~Species,paired=TRUE, data = metrics)
-# V = 11, p-value = 0.4375
-
-wilcox.test(NR~Species,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.8125
-
-wilcox.test(CR~Species,paired=TRUE, data = metrics)
-# V = 14, p-value = 0.125
-
-wilcox.test(SDNND~Species,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(D13C~Species,paired=TRUE, data = metrics)
-#V = 0, p-value = 0.0625
-
-wilcox.test(TP~Species,paired=TRUE, data = metrics)
-# V = 12, p-value = 0.3125
-
-# No difference found
-```
-
-Marbled newt/Crayfish adult (n = 0)
-
-Agile frog/Crayfish juv (n = 5)
-```{r test differences crayfish juv and agile frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(1016, 111, 112, 89, 91), 
-                                           Species %in% c("Juv crayfish", "Agile frog")) %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-wilcox.test(TA~Species,paired=TRUE, data = metrics)
-# V = 3, p-value = 0.3125
-
-wilcox.test(SEAc~Species,paired=TRUE, data = metrics)
-# V = 3, p-value = 0.3125
-
-wilcox.test(NR~Species,paired=TRUE, data = metrics)
-# V = 7, p-value = 1
-
-wilcox.test(CR~Species,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.4375
-
-wilcox.test(SDNND~Species,paired=TRUE, data = metrics)
-# V = 5, p-value = 0.625
-
-wilcox.test(D13C~Species,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.0625
-
-wilcox.test(TP~Species,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.0625
-
-# No difference found
-```
-
-
-
-Tree frog/Crayfish juv (n = 2)
-Palmate newt/Crayfish juv (n = 4)
-```{r test differences crayfish adult and palmate newt}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(111, 112, 91, 949), 
-                                           Species %in% c("Juv crayfish", "Palmate newt")) %>% 
-  group_by(Pond, Species) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-wilcox.test(TA~Species,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(SEAc~Species,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(NR~Species,paired=TRUE, data = metrics)
-# V = 2, p-value = 0.375
-
-wilcox.test(CR~Species,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-wilcox.test(SDNND~Species,paired=TRUE, data = metrics)
-# V = 6, p-value = 0.875
-
-wilcox.test(D13C~Species,paired=TRUE, data = metrics)
-#V = 0, p-value = 0.125
-
-wilcox.test(TP~Species,paired=TRUE, data = metrics)
-# V = 5, p-value = 1
-
-# No difference found
-```
-
-Marbled newt/Crayfish juv (n = 0)
-
-
-## C. Check differences between all crayfish and each amphibian species
-
-### Complete dataset
-Agile frog/All crayfish (n = 9)
-```{r test differences all crayfish and agile frog}
-# Composed estimates
+## A. Agile frog/All crayfish (n = 9)
+Prepare the dataset and show mean values
+```{r prep crayfish and agile frog dataset}
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish") 
 metrics_agile <- Pop_metrics %>% filter(Species == "Agile frog") 
 
 metrics <- rbind(metrics_crayfish, metrics_agile)
-metrics$Pond
 metrics %<>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949))
 
-metrics %>% group_by(TaxaUsed) %>% summarise(medianTA = median(TAcp),
-                                             medianSEAc = median(SEAc),
-                                             medianNR = median(NRcp),
-                                             medianCR = median(CRcp),
+metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = median(TAcp),
+                                             meanSEAc = mean(SEAc),
+                                             meanNR = mean(NRcp),
+                                             # medianCR = median(CRcp),
                                              # medianCD = median(CDcp),
                                              # medianMNND = median(MNNDcp),
-                                             medianSDNND = median(SDNNDcp),
-                                             medianD13C = median(D13Cavg),
-                                             medianTP = median(TPavg))
+                                             # medianSDNND = median(SDNNDcp),
+                                             # medianD13C = median(D13Cavg),
+                                             # medianTP = median(TPavg)
+                                             )
+```
 
-wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
+Wilcoxon tests
+```{r wilcoxon tests agile frog crayfish}
+# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 1, p-value = 0.007812 **
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
@@ -400,127 +80,118 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 5, p-value = 0.03906 *
 
-wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 6, p-value = 0.05469 .
 
-wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 7, p-value = 0.07422 .
 
-wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
 # V = 0, p-value = 0.003906 **
 
-wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 # V = 0, p-value = 0.003906 **
 
 # Difference found in TA, SEAc, NR, TP and D13C
-
-# Replace wilcoxon tests by permutation tests
-# Test
 ```
 
-Permutation paired t-test: crayfish/agile frog
-```{r permut tests}
-metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
-head(metrics)
-dim(metrics)
+Paired permutation test 
+```{r permut tests agile frog/crayfish}
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
-
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
-head(metrics_pivoted)
-dim(metrics_pivoted)
-
-# Test par permutation sur la différence de moyenne: TAcp
-library(PairedData)
-
-# Calculate the difference
-metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Agile frog`,
-                            diffCR = CRcp_Crayfish - `CRcp_Agile frog`,
+# Test par permutation sur la différence de moyenne:
+# Calculate the difference between the two species
+metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Agile frog`,
+                            # diffCR = CRcp_Crayfish - `CRcp_Agile frog`,
                             diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
                             diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`,
-                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Agile frog`)
+                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Agile frog`
+                            )
 
 
 # permutation test: set the number of permutations 
 sim <- 10^4 #number of permutations
-permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
-permCR <- rep(NA, sim) 
+
+#create an empty vector to store the simulated averages
+# permTA <- rep(NA, sim) 
+# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-permSDNND <- rep(NA, sim) #
+# permSDNND <- rep(NA, sim) #
 
-
-k <- nrow(metrics_pivoted)# number of individuals to sample/permute
-set.seed(2022) # make sure the results are going to be the same
+k <- nrow(metrics_pivoted) # number of individuals to sample/permute
+set.seed(2022) # make sure the results are going to be the same every time we run the code
 
 # permute data
-for (i in 1:sim) {
+for (i in 1:sim) { #in each simulation
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
-permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
-permCR[10000] = mean(metrics_pivoted$diffCR)
+#add the observed difference
+# permTA[10000] = mean(metrics_pivoted$diffTA) 
+# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
-
-# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
-# avant et apres, sous l'hypothese nulle
-hist(perm)#xlim=c(-0.05,0.05))
-abline(v = perm[10000], lty = 2, col = "red")
-limdiff = quantile(perm, c(.025,.975))
-limdiff
-abline(v=limdiff[1])
-abline(v=limdiff[2])
+# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
-# a la difference observee entre les moyennes
-tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
-#enfin, calcule la valeur de p
-pTA = tablepropTA[2]/10000
-pTA
+# a la difference observee entre les moyennes, puis calcule la valeur de p
 
-tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
-#enfin, calcule la valeur de p
-pCR = tablepropCR[2]/10000
-pCR
+# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+# pTA = tablepropTA[2]/10000
+# pTA
+
+# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+# pCR = tablepropCR[2]/10000
+# pCR
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
-#enfin, calcule la valeur de p
 pNR = tablepropNR[2]/10000
-pNR
+pNR #p =0.0419
 
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
-#enfin, calcule la valeur de p
 pSEAc = tablepropSEAc[2]/10000
-pSEAc
+pSEAc # p = 0.008
 
-tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
-#enfin, calcule la valeur de p
-pSDNND = tablepropSDNND[2]/10000
-pSDNND
+# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+# pSDNND = tablepropSDNND[2]/10000
+# pSDNND
 
 ```
 
 
-Tree frog/All crayfish (n = 4)
+## B. Tree frog/All crayfish (n = 4)
+Prepare the dataset and show mean values
 ```{r test differences all crayfish and tree frog}
-# Composed estimates
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish")
 metrics_treefrog <- Pop_metrics %>% filter(TaxaUsed == "Tree frog") 
 
-
 metrics <- rbind(metrics_crayfish, metrics_treefrog)
-metrics$Pond
 metrics %<>% filter(Pond %in% c(66, 89, 91, 949))
 
-wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
+metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = median(TAcp),
+                                             meanSEAc = mean(SEAc),
+                                             meanNR = mean(NRcp),
+                                             # medianCR = median(CRcp),
+                                             # medianCD = median(CDcp),
+                                             # medianMNND = median(MNNDcp),
+                                             # medianSDNND = median(SDNNDcp),
+                                             # medianD13C = median(D13Cavg),
+                                             # medianTP = median(TPavg)
+                                             )
+```
+
+Wilcoxon tests
+```{r wilcoxon tests tree frog crayfish}
+# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 6, p-value = 0.875
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
@@ -529,51 +200,45 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 #V = 2, p-value = 0.375
 
-wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 9, p-value = 0.25
 
-wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 7, p-value = 0.625
 
-wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
 # V = 10, p-value = 0.125
 
-wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 # V = 9, p-value = 0.25
 
 # No difference
 ```
 
 
-Permutation paired t-test: crayfish/agile frog
-```{r permut tests}
-metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
-head(metrics)
-dim(metrics)
+Permutation paired t-test
+```{r permut tests tree frog crayfish}
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
-
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
-head(metrics_pivoted)
-dim(metrics_pivoted)
 
 # Test par permutation sur la différence de moyenne: TAcp
-library(PairedData)
-
 # Calculate the difference
-metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Tree frog`,
-                            diffCR = CRcp_Crayfish - `CRcp_Tree frog`,
+metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Tree frog`,
+                            # diffCR = CRcp_Crayfish - `CRcp_Tree frog`,
                             diffNR = NRcp_Crayfish - `NRcp_Tree frog`,
                             diffSEAc = SEAc_Crayfish - `SEAc_Tree frog`,
-                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Tree frog`)
+                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Tree frog`
+                            )
 
 
 # permutation test: set the number of permutations 
 sim <- 10^4 #number of permutations
-permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
-permCR <- rep(NA, sim) 
+# permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
+# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-permSDNND <- rep(NA, sim) #
+# permSDNND <- rep(NA, sim) #
 
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
@@ -583,80 +248,76 @@ set.seed(2022) # make sure the results are going to be the same
 for (i in 1:sim) {
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
-permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
-permCR[10000] = mean(metrics_pivoted$diffCR)
+# permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
+# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
-
-# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
-# avant et apres, sous l'hypothese nulle
-# hist(perm)#xlim=c(-0.05,0.05))
-# abline(v = perm[10000], lty = 2, col = "red")
-# limdiff = quantile(perm, c(.025,.975))
-# limdiff
-# abline(v=limdiff[1])
-# abline(v=limdiff[2])
-
+# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
 #enfin, calcule la valeur de p
-pTA = tablepropTA[2]/10000
-pTA #no diff
+# pTA = tablepropTA[2]/10000
+# pTA #no diff
 
-tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
 #enfin, calcule la valeur de p
-pCR = tablepropCR[2]/10000
-pCR # no diff
+# pCR = tablepropCR[2]/10000
+# pCR # no diff
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 #enfin, calcule la valeur de p
 pNR = tablepropNR[2]/10000
-pNR #no diff
+pNR #p = 0.3816 no diff
 
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 #enfin, calcule la valeur de p
 pSEAc = tablepropSEAc[2]/10000
-pSEAc # no difference
+pSEAc 
+tablepropSEAc
+# All simulations are TRUE, so p > 0.9999, no difference
 
-tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
 #enfin, calcule la valeur de p
-pSDNND = tablepropSDNND[2]/10000
-pSDNND # no difference
+# pSDNND = tablepropSDNND[2]/10000
+# pSDNND # no difference
 
 ```
 
 
-Palmate newt/All crayfish (n = 5)
+## C. Palmate newt/All crayfish (n = 5)
+Prepare the dataset and show mean values
 ```{r test differences crayfish adult and palmate newt}
-# Composed estimates
+
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish") 
 metrics_palmate <- Pop_metrics %>% filter(TaxaUsed == "Palmate newt")
 
 metrics <- rbind(metrics_crayfish, metrics_palmate)
-metrics$Pond
 metrics %<>% filter(Pond %in% c(111, 112, 66, 91, 949))
 
-metrics %>% group_by(TaxaUsed) %>% summarise(medianTA = round(median(TAcp),2),
-                                             medianSEAc = round(median(SEAc),2),
-                                             medianNR = round(median(NRcp),2),
-                                             medianCR = round(median(CRcp),2),
+metrics %>% group_by(TaxaUsed) %>% summarise(#medianTA = round(median(TAcp),2),
+                                             meanSEAc = round(mean(SEAc),2),
+                                             meanNR = round(mean(NRcp),2),
+                                             #medianCR = round(median(CRcp),2),
                                              # medianCD = round(median(CDcp),2),
                                              # medianMNND = round(median(MNNDcp),2),
-                                             medianSDNND = round(median(SDNNDcp),2),
-                                             medianD13C = round(median(D13Cavg),2),
-                                             medianTP = round(median(TPavg),2))
+                                             #medianSDNND = round(median(SDNNDcp),2),
+                                             #medianD13C = round(median(D13Cavg),2),
+                                             #medianTP = round(median(TPavg),2)
+                                             )
+```
 
-wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
+Wilcoxon tests
+```{r wilcoxon tests palmate newt crayfish}
+# wilcox.test(TAcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 15, p-value = 0.0625 .
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
@@ -665,51 +326,44 @@ wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 10, p-value = 0.625
 
-wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(CRcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 15, p-value = 0.0625 .
 
-wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(SDNNDcp~TaxaUsed,paired=TRUE, data = metrics)
 # V = 15, p-value = 0.0625 .
 
-wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(D13Cavg~TaxaUsed,paired=TRUE, data = metrics)
 # V = 0, p-value = 0.0625 .
 
-wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
+# wilcox.test(TPavg~TaxaUsed,paired=TRUE, data = metrics)
 #V = 9, p-value = 0.8125
 
 # No difference
 ```
 
 
-Permutation paired t-test: crayfish/palmate newt
-```{r permut tests}
-metrics %<>% dplyr::select(Pond, NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TaxaUsed, TPavg, D13Cavg)
-head(metrics)
-dim(metrics)
+Permutation paired t-test: 
+```{r permut tests palmate newt crayfish}
+metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
-
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(TAcp, NRcp, CRcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg))
-head(metrics_pivoted)
-dim(metrics_pivoted)
-
-# Test par permutation sur la différence de moyenne: TAcp
-library(PairedData)
-
+# Test par permutation sur la différence de moyenne: 
 # Calculate the difference
-metrics_pivoted %<>% mutate(diffTA = TAcp_Crayfish - `TAcp_Palmate newt`,
-                            diffCR = CRcp_Crayfish - `CRcp_Palmate newt`,
+metrics_pivoted %<>% mutate(#diffTA = TAcp_Crayfish - `TAcp_Palmate newt`,
+                            # diffCR = CRcp_Crayfish - `CRcp_Palmate newt`,
                             diffNR = NRcp_Crayfish - `NRcp_Palmate newt`,
                             diffSEAc = SEAc_Crayfish - `SEAc_Palmate newt`,
-                            diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Palmate newt`)
+                            # diffSDNND = SDNNDcp_Crayfish - `SDNNDcp_Palmate newt`
+                            )
 
 
 # permutation test: set the number of permutations 
 sim <- 10^4 #number of permutations
-permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
-permCR <- rep(NA, sim) 
+# permTA <- rep(NA, sim) #create an empty vector to store the simulated averages
+# permCR <- rep(NA, sim) 
 permNR <- rep(NA, sim) #
 permSEAc <- rep(NA, sim) #
-permSDNND <- rep(NA, sim) #
+# permSDNND <- rep(NA, sim) #
 
 
 k <- nrow(metrics_pivoted)# number of individuals to sample/permute
@@ -719,364 +373,52 @@ set.seed(2022) # make sure the results are going to be the same
 for (i in 1:sim) {
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
-permTA[i] = mean(metrics_pivoted$diffTA * tirage)
+# permTA[i] = mean(metrics_pivoted$diffTA * tirage)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-permCR[i] = mean(metrics_pivoted$diffCR * tirage)
-permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
+# permCR[i] = mean(metrics_pivoted$diffCR * tirage)
+# permSDNND[i] = mean(metrics_pivoted$diffSDNND * tirage)
 }
 
-permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
-permCR[10000] = mean(metrics_pivoted$diffCR)
+# permTA[10000] = mean(metrics_pivoted$diffTA) #observed difference
+# permCR[10000] = mean(metrics_pivoted$diffCR)
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
-permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
-
-# trouve les limites de l'intervalle de confiance pour la moyenne des differences entre
-# avant et apres, sous l'hypothese nulle
-# hist(perm)#xlim=c(-0.05,0.05))
-# abline(v = perm[10000], lty = 2, col = "red")
-# limdiff = quantile(perm, c(.025,.975))
-# limdiff
-# abline(v=limdiff[1])
-# abline(v=limdiff[2])
+# permSDNND[10000] = mean(metrics_pivoted$diffSDNND)
 
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
+# tablepropTA = table(abs(permTA) >= abs(mean(metrics_pivoted$diffTA)))
 #enfin, calcule la valeur de p
-pTA = tablepropTA[2]/10000
-pTA
+# pTA = tablepropTA[2]/10000
+# pTA
 
-tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
+# tablepropCR = table(abs(permCR) >= abs(mean(metrics_pivoted$diffCR)))
 #enfin, calcule la valeur de p
-pCR = tablepropCR[2]/10000
-pCR
+# pCR = tablepropCR[2]/10000
+# pCR
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 #enfin, calcule la valeur de p
 pNR = tablepropNR[2]/10000
-pNR
+pNR # p = 0.4966
 
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 #enfin, calcule la valeur de p
 pSEAc = tablepropSEAc[2]/10000
-pSEAc
+pSEAc # p = 0.0652
 
-tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
+# tablepropSDNND = table(abs(permSDNND) >= abs(mean(metrics_pivoted$diffSDNND)))
 #enfin, calcule la valeur de p
-pSDNND = tablepropSDNND[2]/10000
-pSDNND
+# pSDNND = tablepropSDNND[2]/10000
+# pSDNND
 
 ```
 
 
 
-Marbled newt/All crayfish (n = 0)
+## D. Marbled newt/All crayfish (n = 0)
+No stats
 
-
-
-### Without outliers dataset
-Agile frog/All crayfish (n = 9)
-```{r test differences all crayfish and agile frog}
-# Composed estimates
-metrics_crayfish <- Pop_metrics_wo %>% filter(TaxaUsed == "Crayfish") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics_agile <- Pop_metrics_wo %>% filter(Species == "Agile frog") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics <- rbind(metrics_crayfish, metrics_agile)
-metrics$Pond
-metrics %<>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949))
-
-wilcox.test(TA~TaxaUsed,paired=TRUE, data = metrics)
-# V = 1, p-value = 0.007812 **
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 1, p-value = 0.007812 **
-
-wilcox.test(NR~TaxaUsed,paired=TRUE, data = metrics)
-# V = 5, p-value = 0.03906 *
-
-wilcox.test(CR~TaxaUsed,paired=TRUE, data = metrics)
-# V = 6, p-value = 0.05469 .
-
-wilcox.test(SDNND~TaxaUsed,paired=TRUE, data = metrics)
-# V = 7, p-value = 0.07422 .
-
-wilcox.test(D13C~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 **
-
-wilcox.test(TP~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 **
-
-# Difference found in TA, SEAc, NR, TP and D13C
-```
-
-Tree frog/All crayfish (n = 4)
-```{r test differences all crayfish and tree frog}
-# Composed estimates
-metrics_crayfish <- Pop_metrics_wo %>% filter(TaxaUsed == "Crayfish") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics_treefrog <- Pop_metrics_wo %>% filter(TaxaUsed == "Tree frog") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics <- rbind(metrics_crayfish, metrics_treefrog)
-metrics$Pond
-metrics %<>% filter(Pond %in% c(66, 89, 91, 949))
-
-wilcox.test(TA~TaxaUsed,paired=TRUE, data = metrics)
-# V = 6, p-value = 0.875
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(NR~TaxaUsed,paired=TRUE, data = metrics)
-#V = 2, p-value = 0.375
-
-wilcox.test(CR~TaxaUsed,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-wilcox.test(SDNND~TaxaUsed,paired=TRUE, data = metrics)
-# V = 7, p-value = 0.625
-
-wilcox.test(D13C~TaxaUsed,paired=TRUE, data = metrics)
-# V = 10, p-value = 0.125
-
-wilcox.test(TP~TaxaUsed,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-# No difference
-```
-
-Palmate newt/All crayfish (n = 5)
-```{r test differences crayfish adult and palmate newt}
-# Composed estimates
-metrics_crayfish <- Pop_metrics_wo %>% filter(TaxaUsed == "Crayfish") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics_palmate <- Pop_metrics_wo %>% filter(TaxaUsed == "Palmate newt") %>% 
-  group_by(Pond, TaxaUsed) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-
-metrics <- rbind(metrics_crayfish, metrics_palmate)
-metrics$Pond
-metrics %<>% filter(Pond %in% c(111, 112, 66, 91, 949))
-
-wilcox.test(TA~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(NR~TaxaUsed,paired=TRUE, data = metrics)
-# V = 10, p-value = 0.625
-
-wilcox.test(CR~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(SDNND~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(D13C~TaxaUsed,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.0625
-
-wilcox.test(TP~TaxaUsed,paired=TRUE, data = metrics)
-#V = 9, p-value = 0.8125
-
-# No difference
-```
-
-Marbled newt/All crayfish (n = 0)
-
-## D. Difference between crayfish (one niche) and amphibians (separate) (DEPRECATED)
-
-Agile frog/Crayfish (n = 9)
-```{r test differences all crayfish and agile frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(1016, 111, 112, 66, 72, 888, 89, 91, 949), 
-                                           Taxa %in% c("Crayfish", "Agile frog")) %>% 
-  group_by(Pond, Taxa) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-wilcox.test(TA~Taxa,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.02734 <<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-wilcox.test(SEAc~Taxa,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.02734 <<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-wilcox.test(NR~Taxa,paired=TRUE, data = metrics)
-# V = 8, p-value = 0.09766
-
-wilcox.test(CR~Taxa,paired=TRUE, data = metrics)
-# V = 8, p-value = 0.09766
-
-wilcox.test(SDNND~Taxa,paired=TRUE, data = metrics)
-# V = 8, p-value = 0.09766
-
-wilcox.test(D13C~Taxa,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 <<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-wilcox.test(TP~Taxa,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.003906 <<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-# Difference found in TP and D13C
-```
-Tree frog/Crayfish (n = 4)
-```{r test differences all crayfish and agile frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(66, 89, 91, 949), 
-                                           Taxa %in% c("Crayfish", "Tree frog")) %>% 
-  group_by(Pond, Taxa) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-wilcox.test(TA~Taxa,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(SEAc~Taxa,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(NR~Taxa,paired=TRUE, data = metrics)
-# V = 1, p-value = 0.25
-
-wilcox.test(CR~Taxa,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-wilcox.test(SDNND~Taxa,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(D13C~Taxa,paired=TRUE, data = metrics)
-# V = 10, p-value = 0.125
-
-wilcox.test(TP~Taxa,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.25
-
-# Difference found in TP and D13C
-```
-Palmate newt/Crayfish (n = 5)
-```{r test differences all crayfish and agile frog}
-# Composed estimates
-metrics <- Pop_metrics %>% filter(Pond %in% c(111, 112, 66, 91, 949), 
-                                           Taxa %in% c("Crayfish", "Palmate newt")) %>% 
-  group_by(Pond, Taxa) %>% 
-  summarise(N = n(),
-            TA = mean(TAcp),
-            SEAc = mean(SEAc),
-            NR = mean(NRcp),
-            CR = mean(CRcp),
-            CD = mean(CDcp),
-            MNND = mean(MNNDcp),
-            SDNND = mean(SDNNDcp),
-            D13C = mean(D13Cavg),
-            TP = mean(TPavg)) 
-
-wilcox.test(TA~Taxa,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(SEAc~Taxa,paired=TRUE, data = metrics)
-# V = 14, p-value = 0.125
-
-wilcox.test(NR~Taxa,paired=TRUE, data = metrics)
-# V = 8, p-value = 1
-
-wilcox.test(CR~Taxa,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(SDNND~Taxa,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625
-
-wilcox.test(D13C~Taxa,paired=TRUE, data = metrics)
-# V = 0, p-value = 0.0625
-
-wilcox.test(TP~Taxa,paired=TRUE, data = metrics)
-# V = 9, p-value = 0.8125
-
-# Difference found in TP and D13C
-```
 
