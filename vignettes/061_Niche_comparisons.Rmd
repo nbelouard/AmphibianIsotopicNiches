@@ -34,8 +34,8 @@ library(PairedData)
 ```
 
 ```{r load datasets per pop}
-Niche_metrics <- read.csv(file.path(here(), "exported_data", "Population_metrics_complete.csv"), h = T)
-Mean_position <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc_complete.csv"), header = T)
+Niche_metrics <- read.csv(file.path(here(), "data", "Population_metrics_complete.csv"), h = T)
+Mean_position <- read.csv(file.path(here(), "data", "Meanposition_SEAc_complete.csv"), header = T)
 ```
 
 We merge both datasets (one contains the Layman metrics and the other the SEAc).
