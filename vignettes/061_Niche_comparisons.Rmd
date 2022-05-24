@@ -6,9 +6,9 @@ date: "10/08/2020"
 output:
   pdf_document:
     toc: TRUE
-    toc_depth: 2
+    toc_depth: 3
   html_document:
-    toc: TRUE
+    toc: FALSE
     toc_depth: 3
 params:
   show_code: FALSE
@@ -17,10 +17,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-This vignette compares niche metrics between the different study species in ponds
+
 
 # 1. Setup
 
+This vignette compares niche metrics between the different study species in ponds
 We begin by loading the required libraries and datasets.
 
 ```{r setup, warning = FALSE, message = FALSE}
@@ -49,7 +50,7 @@ Pop_metrics <- merge(Niche_metrics, Mean_position, by = c("Pond", "Code"))
 # 2. Compare crayfish and amphibians niches
 
 ## A. Agile frog/All crayfish (n = 9)
-Prepare the dataset and show mean values
+### Prepare the dataset and show mean values
 ```{r prep crayfish and agile frog dataset}
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish") 
 metrics_agile <- Pop_metrics %>% filter(Species == "Agile frog") 
@@ -63,7 +64,7 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              )
 ```
 
-Wilcoxon tests
+### Wilcoxon tests
 ```{r wilcoxon tests agile frog crayfish}
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
@@ -74,12 +75,12 @@ wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 
 ```
 
-Paired permutation test 
+### Paired permutation tests 
 ```{r permut tests agile frog/crayfish}
 metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
 metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
-# Test par permutation sur la différence de moyenne:
+# Test par permutation sur la différence de moyenne :
 # Calculate the difference between the two species
 metrics_pivoted %<>% mutate(
                             diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
@@ -87,12 +88,12 @@ metrics_pivoted %<>% mutate(
                             )
 
 
-# permutation test: set the number of permutations 
+# set the number of permutations 
 sim <- 10^4 #number of permutations
 
 #create an empty vector to store the simulated averages
-permNR <- rep(NA, sim) #
-permSEAc <- rep(NA, sim) #
+permNR <- rep(NA, sim)
+permSEAc <- rep(NA, sim) 
 
 k <- nrow(metrics_pivoted) # number of individuals to sample/permute
 set.seed(2022) # make sure the results are going to be the same every time we run the code
@@ -102,10 +103,11 @@ for (i in 1:sim) { #in each simulation
   # randomly select some pairs to have their difference multiplied by negative to indicate the other species should have the highest size
 tirage = sample(c(-1,1), size = k, replace = T)
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
+# append the average in the vector
 permNR[i] = mean(metrics_pivoted$diffNR * tirage)
 }
 
-#add the observed difference
+#add the observed difference as the final item in the vector
 permNR[10000] = mean(metrics_pivoted$diffNR)
 permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
 
@@ -123,10 +125,10 @@ pSEAc # p = 0.008
 
 ```
 
-
+\newpage
 ## B. Tree frog/All crayfish (n = 4)
-Prepare the dataset and show mean values
-```{r test differences all crayfish and tree frog}
+### Prepare the dataset and show mean values
+```{r test differences all crayfish and tree frog, echo = FALSE}
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish")
 metrics_treefrog <- Pop_metrics %>% filter(TaxaUsed == "Tree frog") 
 
@@ -139,8 +141,8 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              )
 ```
 
-Wilcoxon tests
-```{r wilcoxon tests tree frog crayfish}
+### Wilcoxon tests
+```{r wilcoxon tests tree frog crayfish, echo = FALSE}
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 # V = 4, p-value = 0.875
@@ -151,8 +153,8 @@ wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 ```
 
 
-Permutation paired t-test
-```{r permut tests tree frog crayfish}
+### Paired permutation tests
+```{r permut tests tree frog crayfish, echo = FALSE}
 metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
 metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
@@ -188,24 +190,24 @@ permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-
+print("p-value for NR")
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
 pNR #p = 0.3816 no diff
 
+print("p-value for SEAc")
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
-
 pSEAc = tablepropSEAc[2]/10000
 pSEAc 
 tablepropSEAc
-# All simulations are TRUE, so p > 0.9999, no difference
+print("All simulations are TRUE, so p > 0.9999, no difference")
 
 ```
 
-
+\newpage
 ## C. Palmate newt/All crayfish (n = 5)
-Prepare the dataset and show mean values
-```{r test differences crayfish adult and palmate newt}
+### Prepare the dataset and show mean values
+```{r test differences crayfish adult and palmate newt, echo = FALSE}
 
 metrics_crayfish <- Pop_metrics %>% filter(TaxaUsed == "Crayfish") 
 metrics_palmate <- Pop_metrics %>% filter(TaxaUsed == "Palmate newt")
@@ -219,8 +221,8 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              )
 ```
 
-Wilcoxon tests
-```{r wilcoxon tests palmate newt crayfish}
+### Wilcoxon tests
+```{r wilcoxon tests palmate newt crayfish, echo = FALSE}
 
 wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
 # V = 15, p-value = 0.0625 .
@@ -231,8 +233,8 @@ wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
 ```
 
 
-Permutation paired t-test: 
-```{r permut tests palmate newt crayfish}
+### Paired permutation tests 
+```{r permut tests palmate newt crayfish, echo = FALSE}
 metrics %<>% dplyr::select(Pond, NRcp, SEAc, TaxaUsed)
 metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc))
 
@@ -267,11 +269,12 @@ permSEAc[10000] = mean(metrics_pivoted$diffSEAc)
 
 # Table disjonctive qui compte le nombre de valeurs dans perm qui sont superieures ou egales
 # a la difference observee entre les moyennes
-
+print("p-value for NR")
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
 pNR # p = 0.4966
 
+print("p-value for SEAc")
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 pSEAc = tablepropSEAc[2]/10000
 pSEAc # p = 0.0652
@@ -279,7 +282,7 @@ pSEAc # p = 0.0652
 ```
 
 
-
+\newpage
 ## D. Marbled newt/All crayfish (n = 0)
 No stats
 
