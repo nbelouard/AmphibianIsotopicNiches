@@ -46,45 +46,27 @@ library(here)
 #Load datasets
 Envt <- read.table(file.path(here(), "data-raw", "Candidate_hab_com_variables.txt"), h = T)
 
-
-# Dataset without outliers
-# Niche_metrics <- read.csv(file.path(here(), "exported_data", "Population_metrics_subset.csv"), h = T)
-# Mean_position <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc.csv"), header = T)
-# names(Mean_position)[3] <- "Code"
-
-
-# Dataset with outliers
+# Dataset
 Niche_metrics_complete <- read.csv(file.path(here(), "exported_data", "Population_metrics_complete.csv"), h = T)
 Mean_position_complete <- read.csv(file.path(here(), "exported_data", "Meanposition_SEAc_complete.csv"), header = T)
 names(Mean_position_complete)[3] <- "Code"
+
+CD_global <- read.csv(file.path(here(), "exported_data", "CD_global.csv"))
+CD_global %<>% dplyr::select(Code, Species, CDcp, MNNDcp, SDNNDcp) 
+CD_global %<>% rename(Pond = Code,
+                      CDg = CDcp,
+                      MNNDg = MNNDcp,
+                      SDNNDg = SDNNDcp
+                      ) 
+
 ```
 
 ```{r merge datasets}
-
-# Merge niche metrics and mean position
-# Pop_metrics <- merge(Niche_metrics_oneniche, Mean_position_oneniche, by = c("Pond", "Code"))
-# Pop_metrics <- merge(Niche_metrics, Mean_position, by = c("Pond", "Code"))
-# dim(Pop_metrics)[1] == dim(Niche_metrics)[1]
-# dim(Pop_metrics)[1] == dim(Mean_position)[1]
 
 Pop_metrics_complete <- merge(Niche_metrics_complete, 
                               Mean_position_complete, by = c("Pond", "Code"))
 dim(Pop_metrics_complete)[1] == dim(Niche_metrics_complete)[1]
 dim(Pop_metrics_complete)[1] == dim(Mean_position_complete)[1]
-
-# Create the variable "Group" to differentiate newts and tadpoles
-# for (i in 1:length(Pop_metrics$Pond)) {
-#   if (Pop_metrics$Taxa[i] %in% c("Agile frog", "Tree frog")) {
-#     Pop_metrics$Group[i] = "Tadpoles"
-#     Pop_metrics$Clade[i] = "Amphibians"
-#   } else if (Pop_metrics$Taxa[i] %in% c("Palmate newt", "Marbled newt")) {
-#     Pop_metrics$Group[i] = "Newts"
-#     Pop_metrics$Clade[i] = "Amphibians"
-#   } else {
-#     Pop_metrics$Group[i] = "Crayfish"
-#     Pop_metrics$Clade[i] = "Crayfish"
-#   }
-# }
 
 for (i in 1:length(Pop_metrics_complete$Pond)) {
   if (Pop_metrics_complete$Taxa[i] %in% c("Agile frog", "Tree frog")) {
@@ -111,22 +93,13 @@ names(Candidate)
 
 
 #Create a dataset only for amphibian populations
-# Pop_amphib <- Pop_metrics %>% filter(Clade == "Amphibians")
 Pop_amphib_complete <- Pop_metrics_complete %>% filter(Clade == "Amphibians")
 
 #Merge metrics and explicative variables
-# Pop_dataset <- merge(Pop_amphib, Candidate, by = "Pond")
-# print("Is there still 44 populations in the dataset?")
-# dim(Pop_dataset)[1] == 44
-
 Pop_dataset_complete <- merge(Pop_amphib_complete, Candidate, by = "Pond")
 print("Is there still 44 populations in the dataset?")
 dim(Pop_dataset_complete)[1] == 44
 
-#try and run it separately on tadpoles and newts
-# Pop_tadpoles <- Pop_dataset %>% filter(Group == "Tadpoles")
-# Pop_newts <- Pop_dataset %>% filter(Group == "Newts")
-# Pop_dataset$Group <- factor(Pop_dataset$Group, levels = c("Tadpoles", "Newts"))
 ```
 
 
@@ -136,8 +109,24 @@ First, we test the correlation between metrics, in order to determine whether so
 
 ```{r compare metrics, include=FALSE}
 
+Correlation <- merge(CD_global %>% dplyr::select(-MNNDg, -SDNNDg), Pop_amphib_complete %>% dplyr::select(Pond, Species, NRcp, CRcp, TAcp, SEAc))
+head(Correlation)
+
+Metrics <- Correlation %>% dplyr::select(-Pond, -Species) 
+dim(Metrics)
+
 # Compute the correlations between niche netrics
-Metrics_cor <- rcorr(as.matrix(Pop_amphib[c(15:17,20,22,25:26)]), type= "pearson")
+Metrics_cor <- rcorr(as.matrix(Metrics), type = "spearman")
+# All metrics are extremely correlated except with NR (max = 0.50)
+# Correlation with pearson; with spearman
+# Cor with CR > 0.81; 0.67
+# Cor with TA > 0.80; 0.76
+# Cor with SDNND > 0.79; 0.70
+# Cor with SEAc > 0.79; 0.75
+# Cor with CDg > 0.81;0.67
+# > Keep SEAc and NR
+# > D13C was correlated to nothing (max = 0.29)
+# > TP was correlated only to CR and SDNND but not the rest (max = 0.15)
 
 # Transform the tables
 Metrics_cor_r <- melt(Metrics_cor$r)
@@ -1416,6 +1405,44 @@ summary(Model_selected1)
 Two models are retained, including the null.
 
 
+## CDglobal
+```{r CDglobal}
+#Merge metrics and explicative variables
+CDglobal <- merge(CD_global, Candidate, by = "Pond")
+print("Is there still 44 populations in the dataset?")
+dim(CDglobal)[1] == 44
+```
 
 
+```{r check GOF for mean TP, include=FALSE}
+# Check residuals
+mod1 <- lmer(CDg ~ scale(Canopycover) + (1|Species), na.action="na.fail", data=CDglobal)
+plotresid(mod1) #residuals ok
+```
 
+```{r check GOF for mean TP transformed, include=FALSE}
+# Check residuals
+mod1 <- lmer(log(CDg) ~ scale(Canopycover) + (1|Species), na.action="na.fail", data=CDglobal)
+plotresid(mod1) #residuals ok
+
+```
+
+
+```{r dredge TP model, include=FALSE}
+# Test effect of candidate variables
+mod_CDg <- lmer(log(CDg) ~ scale(Area) + scale(Canopycover) + scale(Aq_VegCover) +
+               scale(CrayfishCPUE) +
+               scale(Agile_frog) + scale(Tree_frog) + scale(Palmate_newt) + scale(Marbled_newtCPUE) +
+               scale(Tadpoles) + (1|Species) #+ (1|Pond)
+               , na.action="na.fail", data = CDglobal)
+CDg_dredge <- dredge(mod_CDg, rank = AICc, m.lim = c(0,2), extra="R^2")
+subset(CDg_dredge, delta < 2)
+
+```
+
+Test R2m vs R2c dans dredge
+```{r test R2 conditional or marginal}
+mod_CDg <- lmer(log(CDg) ~ scale(Canopycover) + scale(Marbled_newtCPUE) + (1|Species) #+ (1|Pond)
+               , na.action="na.fail", data = CDglobal)
+r.squaredGLMM(mod_CDg)
+```
