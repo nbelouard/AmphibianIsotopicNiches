@@ -1,2 +1,8 @@
 # coexistence_isoniches
-Coexistence between an invasive crayfish and native amphibians through non-overlapping isotopic niches. This is a test from Rstudio.
+Coexistence between an invasive crayfish and native amphibians through non-overlapping isotopic niches. 
+
+Invasive species are widely reported to cause local extinctions of native species. Where native species do persist, there is a unique opportunity to observe the mechanisms of coexistence at play and the modifications induced by the arrival of the invasive species.
+
+The red swamp crayfish, _Procambarus clarkii_, has been repeatedly shown to alter communities of aquatic ecosystems in its invasive range, and multiple reports of amphibian species decline are of particular concern. The generalist and omnivorous diet of this crayfish, associated to its burrowing activity, makes it interacting in multiple ways with amphibians. Predation on larval amphibians, antagonistic behavioral interactions with newts, depletion of the aquatic vegetation required to their reproduction, modification of resource availability and of water quality have all been detected in experimental conditions. Studying the food webs of natural ecosystems where this crayfish coexists with native amphibians is a way to advance the comprehension of the mechanisms underlying the settlement of species coexistence. 
+
+Despite multiple records of local amphibian extinctions after the introduction of the red swamp crayfish, the stable coexistence of these species has been observed in pond networks of the Natural Regional Park of Brière in northwestern France. What can be learned on the mechanisms of this coexistence based on isotopic niches?
