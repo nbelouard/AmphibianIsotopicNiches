@@ -74,118 +74,7 @@ spy <- split(Subset_Dataset$TP, Subset_Dataset$Species, drop = TRUE)
 
 ```
 
-## a- Layman metrics -- DEPRECATED
-Calculate Layman metrics at the regional level
-```{r calculate regional Layman metrics}
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", 
-                                "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], 
-                 all=TRUE)
-}
-
-Pop_metrics_Layman <- as.data.frame(t(Table))
-colnames(Pop_metrics_Layman) <- Pop_metrics_Layman[1,]
-Pop_metrics_Layman <- Pop_metrics_Layman[-1,]
-Pop_metrics_Layman$Code <- rownames(Pop_metrics_Layman)
-
-```
-
-## b- Layman metrics with bootstrapping -- DEPRECATED
-Now we calculate the Layman metrics using the bootstrapping method to account for unequal sample sizes. For each pop, we sample 10 individuals in the population, calculate the 6 metrics of Layman, then do it again 999 times.
-
-```{r calculate regional Layman metrics with bootstrapping}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = 5
-
-# Create empty vectors to store the results 
-dNR <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-dCR <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-TA <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(dNR) <- names(spx)
-names(dCR) <- names(spx)
-names(TA) <- names(spx)
-names(CD) <- names(spx)
-names(MNND) <- names(spx)
-names(SDNND) <- names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      dNR[i,j] <- layman$dN_range
-      dCR[i,j] <- layman$dC_range
-      TA[i,j] <- layman$hull$TA
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-  }
-
-```
-
-
-```{r summarize average bootstrapped regional Layman metrics}
-
-Regional_metrics_bootstrapped <- as.data.frame(cbind(NRb = colMeans(dNR), 
-                                  CRb = colMeans(dCR), 
-                                  TAb = colMeans(TA),
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(dNR)))
-
-```
-
-## c- SEA metrics -- DEPRECATED
-```{r calculate regional ellipses}
-
-Subset_Dataset_ellipses <- Subset_Dataset %>% 
-  dplyr::select("iso1" = D13Ccor_consoI, "iso2" = TP, "group" = Species) %>%
-  mutate(community = 1) %>% 
-  as.data.frame()
-
-Subset_Dataset_SIBER <- createSiberObject(Subset_Dataset_ellipses)
-Subset_metrics_SEAc <- groupMetricsML(Subset_Dataset_SIBER)
-
-#Table transformation
-Subset_metrics_ellipses <- as.data.frame(t(Subset_metrics_SEAc))
-Subset_metrics_ellipses$Code <- rownames(Subset_metrics_ellipses)
-Subset_metrics_ellipses$Code <- gsub(".*.[.]","",Subset_metrics_ellipses$Code)
-
-```
-
-## d- Merge datasets -- DEPRECATED
-Merge datasets, look at the table and export it
-```{r merge datasets}
-
-Subset_metrics <- merge(Pop_metrics_Layman, Subset_metrics_ellipses[-1], 
-                        by = "Code")
-Subset_metrics
-
-write.csv(Subset_metrics, file.path(here(), "exported_data", 
-                                    "Regional_metrics.csv"), row.names = F)
-```
-
-## e- SEA coordinates
+## a- SEA coordinates
 Generate the coordinates of the standard ellipses for each regional niche and export them.
 ```{r regional SEAc coordinates}
 
@@ -214,7 +103,7 @@ write.csv(CoordSEAc, file.path(here(), "exported_data",
                                "Coordinates_SEAc_regional.csv"), row.names = F)
 ``` 
 
-## f- Area of ellipses overlap for regional niches
+## b- Area of ellipses overlap for regional niches
 ```{r area of ellipses overlap}
 
 #Initialize vectors
