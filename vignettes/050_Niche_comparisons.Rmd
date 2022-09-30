@@ -1,5 +1,5 @@
 ---
-title: "Coexistence crayfish/amphibians #6: Niche comparison"
+title: "Local isotopic niche partitioning and the coexistence between native amphibians and invasive crayfish #5: Niche comparison"
 author: 
 - Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "10/08/2020"
@@ -16,8 +16,6 @@ params:
 editor_options: 
   chunk_output_type: console
 ---
-
-
 
 # 1. Setup
 
@@ -37,9 +35,13 @@ library(PairedData)
 ```
 
 ```{r load datasets per pop}
-Niche_metrics <- read.csv(file.path(here(), "data", "Population_metrics_complete.csv"), h = T)
-Mean_position <- read.csv(file.path(here(), "data", "Meanposition_SEAc_complete.csv"), header = T)
-CDreg <- read.csv(file.path(here(), "exported_data", "CD_global.csv"), header = T)
+Niche_metrics <- read.csv(file.path(here(), "data", 
+                                    "Population_metrics_complete.csv"), h = T)
+Mean_position <- read.csv(file.path(here(), 
+                                    "data", 
+                                    "Meanposition_SEAc_complete.csv"), header = T)
+CDreg <- read.csv(file.path(here(), "exported_data", 
+                            "CD_global.csv"), header = T)
 ```
 
 We merge datasets (one contains the Layman metrics, one the SEAc, the last one CDregional).
@@ -50,7 +52,8 @@ Mean_position %<>% rename(Code = Pop)
 Pop_metrics <- merge(Niche_metrics, Mean_position, by = c("Pond", "Code"))
 
 # select only the columns we are interested in
-CDreg %<>% dplyr::select(Code, Species, CDcp) %>% rename(Pond = Code, CDreg = CDcp)  
+CDreg %<>% dplyr::select(Code, Species, CDcp) %>% 
+  rename(Pond = Code, CDreg = CDcp)  
 Pop_metrics <- merge(Pop_metrics, CDreg, by = c("Pond", "Species"))
 ```
 
@@ -73,23 +76,11 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              )
 ```
 
-### Wilcoxon tests
-```{r wilcoxon tests agile frog crayfish}
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 1, p-value = 0.007812 **
-
-wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 5, p-value = 0.03906 *
-
-wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 5, p-value = 0.03906 *
-```
-
 ### Paired permutation tests 
 ```{r permut tests agile frog/crayfish}
 metrics %<>% dplyr::select(Pond, NRcp, SEAc, CDreg, TaxaUsed)
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc, CDreg))
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, 
+                               values_from = c(NRcp, SEAc, CDreg))
 
 # Test par permutation sur la différence de moyenne :
 # Calculate the difference between the two species
@@ -160,25 +151,11 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              )
 ```
 
-### Wilcoxon tests
-```{r wilcoxon tests tree frog crayfish, echo = FALSE}
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 4, p-value = 0.875
-
-wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
-#V = 2, p-value = 0.375
-
-wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
-#V = 4, p-value = 0.875
-
-```
-
-
 ### Paired permutation tests
 ```{r permut tests tree frog crayfish, echo = FALSE}
 metrics %<>% dplyr::select(Pond, NRcp, SEAc, CDreg, TaxaUsed)
-metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, values_from = c(NRcp, SEAc, CDreg))
+metrics_pivoted <- pivot_wider(metrics, names_from = TaxaUsed, 
+                               values_from = c(NRcp, SEAc, CDreg))
 
 
 # Test par permutation sur la différence de moyenne: TAcp
@@ -250,21 +227,6 @@ metrics %>% group_by(TaxaUsed) %>% summarise(
                                              meanCDreg = round(mean(CDreg),2)
                                              )
 ```
-
-### Wilcoxon tests
-```{r wilcoxon tests palmate newt crayfish, echo = FALSE}
-
-wilcox.test(SEAc~TaxaUsed,paired=TRUE, data = metrics)
-# V = 15, p-value = 0.0625 .
-
-wilcox.test(NRcp~TaxaUsed,paired=TRUE, data = metrics)
-# V = 10, p-value = 0.625
-
-wilcox.test(CDreg~TaxaUsed,paired=TRUE, data = metrics)
-# V = 13, p-value = 0.1875
-
-```
-
 
 ### Paired permutation tests 
 ```{r permut tests palmate newt crayfish, echo = FALSE}
