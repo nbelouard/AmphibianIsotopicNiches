@@ -1,0 +1,210 @@
+---
+title: 'Local isotopic niche partitioning and the coexistence between native amphibians and invasive crayfish #1: Isotope data standardization'
+author: "Nadege Belouard"
+date: "23/09/2022"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+The purpose of this first vignette is to complete isotopic data transformation from raw data to standardized data to be used in isotopic niche calculations.
+
+```{r setup, warning = F, message = F}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(tidyr)
+library(magrittr)
+library(here)
+```
+
+We load the raw dataset and have a look at it.
+
+```{r load data}
+Dataset <- read.csv(file.path(here(), "data_raw", "Raw_data.csv"), header=T)
+Dataset %>% head() %>% kable()
+```
+
+The dataset contains the name of the pond, sample details, isotopic signatures in the columns "D15N" and "D13C", and the C/N ratio in the last column.
+
+
+
+
+# A- Data wrangling
+
+## 1- Correction of D13C for samples with high lipid content (C/N > 3.5)
+
+First, let's have a look at the average C/N for each species.
+
+```{r look at C.N ratio, message=FALSE, warning=FALSE}
+Dataset %>% 
+  group_by(Taxa) %>%
+  summarize(meanCN = mean(C.N),
+            minCN = min(C.N),
+            maxCN = max(C.N)) %>%
+  kable()
+```
+
+Since many of them have C/N higher than 3.5, we need to correct the D13C for high lipid content for all groups, except primary producers. We use the equation of Post, 2007. The lipid-free D13C is saved in a new column named "D13C_LF".
+
+```{r correct D13C for high lipid content using Post equation}
+
+# Simple calculation when dataset is only made of consumers + amphibians
+Dataset %<>% mutate(D13C_LF = D13C - 3.32 + 0.99 * C.N)
+```
+
+And we check that the correction increased D13C by comparing it to y = x:
+
+```{r plot the D13C correction, fig.height=4, fig.width=6}
+plot(Dataset$D13C_LF ~ Dataset$D13C,
+     xlab = "original D13C",
+     ylab = "corrected D13C") +
+  abline(0,1)
+```
+
+Corrected D13C are above the y = x line, so it looks ok.
+
+
+## 2- Correction of amphibian fin values for muscle values
+
+In order to reduce sampling invasibility and in accordance with institutional ethics, we sampled amphibian fins instead of muscle, and need to correct values according to equations published in Bélouard et al. (2018);
+
+Equations to correct the $D^{13}C$ values are:  
+For the agile frog: $D^{13}C_{muscle} = 0.85 \times D^{13}C_{fin} - 5.50$  
+For the European tree frog:	$D^{13}C_{muscle} = 0.87 \times D^{13}C_{fin} - 4.80$  
+For the marbled newt: $D^{13}C_{muscle} = 0.70 \times D^{13}C_{fin} - 7.43$  
+For the palmate newt:	$D^{13}C_{muscle} = 0.71 \times D^{13}C_{fin} - 7.03$  
+  
+Equations to correct the $D^{15}N$ values are:  
+For the agile frog: $D^{15}N_{muscle} = 0.86 \times D^{15}N_{fin} + 0.97$  
+For the European tree frog: $D^{15}N_{muscle} = 1.04 \times D^{15}N_{fin} + 0.67$  
+For the marbled newt: $D^{15}N_{muscle} = 1.01 \times D^{15}N_{fin} - 0.48$  
+For the palmate newt: $D^{15}N_{muscle} = 0.89 \times D^{15}N_{fin} + 0.40$  
+  
+Values corrected for this translation are stored in two new columns: D13C_LFMu and D15N_Mu.
+
+```{r correct fin values}
+
+for (i in 1:dim(Dataset)[1]) {
+  if (Dataset$Taxa[i] == "Agile frog") {
+    Dataset$D13C_LFMu[i] = 0.85 * Dataset$D13C_LF[i] -5.50
+    Dataset$D15N_Mu[i] = 0.86 * Dataset$D15N[i] + 0.97
+  } else if (Dataset$Taxa[i] == "Tree frog") {
+    Dataset$D13C_LFMu[i] = 0.87 * Dataset$D13C_LF[i] -4.80
+    Dataset$D15N_Mu[i] = 1.04 * Dataset$D15N[i] + 0.67
+  } else if (Dataset$Taxa[i] == "Marbled newt") {
+    Dataset$D13C_LFMu[i] = 0.70 * Dataset$D13C_LF[i] - 7.43
+    Dataset$D15N_Mu[i] = 1.01 * Dataset$D15N[i] - 0.48
+  } else if (Dataset$Taxa[i] == "Palmate newt") {
+    Dataset$D13C_LFMu[i] = 0.71 * Dataset$D13C_LF[i] - 7.03
+    Dataset$D15N_Mu[i] = 0.89 * Dataset$D15N[i] + 0.40
+  } else { 
+    Dataset$D13C_LFMu[i] = Dataset$D13C_LF[i]
+    Dataset$D15N_Mu[i] = Dataset$D15N[i]
+  }
+}
+```
+
+
+
+
+
+# B - Data standardization
+
+
+## 1- Trophic position
+
+We need primary consumers to serve as a baseline to standardize the N isotopic value of samples into a variable called "trophic position" (TP). Candidate taxa are: clams, physa, and zooplankton or gammares as an alternative.
+
+``` {r candidate primary consumers for each pond, message = F, warning = F}
+
+x <- Dataset %>%
+  dplyr::filter(Taxa %in% c("Corbiculidae", "Physa", "Zooplankton", "Gammarus",
+                            "Corixidae","Asellus")) %>%
+  group_by(Taxa, Pond)%>%
+  summarise(n = n()) %>%
+  spread(Pond, n)
+
+kable(x)
+```
+
+For each pond, there are 2 to 6 points for clams (0 to 3) and physa (0 to 3). 
+Two ponds do not have clams nor physa. So for pond K we use zooplancton (3) and gammares (3), and for pond 949 we use zooplancton (1). We calculate the average D15N of the mean primary consumers and add it to the dataset.
+
+``` {r calculate the baseline D15N, message = F, warning = F}
+MeanBaselineN <- Dataset %>%
+  dplyr::filter(Taxa %in% c("Corbiculidae", "Physa", "Zooplankton", "Gammarus",
+                            "Corixidae","Asellus")) %>%
+  group_by(Pond, Taxa)%>%
+  summarise(meanD15N = mean(D15N_Mu)) %>%
+  group_by(Pond) %>%
+  summarise(meanD15N = mean(meanD15N))
+  
+# Add mean baseline to each individual of Dataset
+Dataset <- merge(Dataset, MeanBaselineN, by = "Pond", all = T)
+```
+
+Verify that we still have the correct number of rows in the table
+```{r check nb rows 1}
+dim(Dataset)[1] == 1443
+```
+
+Based on this baseline of primary consumers, we calculate the trophic position (TP) as  
+$TP = 2 + D15N_{sample} - D15N_{baseline} / delta$
+Delta is the fractionation coefficient and here delta = 3.4
+
+``` {r calculate TP}
+Delta = 3.4
+Dataset %<>% mutate(TP = 2+(Dataset$D15N_Mu-Dataset$meanD15N)/Delta)
+```
+
+
+## 2- Carbon correction
+
+Again, we need primary consumers to serve as markers of the variability in carbon resources in each pond, to standardize the C isotopic value of samples into a variable called "Delta13Ccor". Taxa used are: clams, physa, zooplankton and gammares. We compute the mean of their averaged values ($D^{13}C_{meanC1}$), then correct individual carbon values (i) using the equation:   
+$D^{13}C_{cor} = (D^{13}C_{i} - D^{13}C_{meanC1}) / range D^{13}C_{C1}$
+
+
+``` {r carbon correction by primary consumers, message = F, warning = F}
+BaselineC <- Dataset %>%
+  filter(Taxa %in% c("Corbiculidae", "Physa", "Zooplankton", "Gammarus", 
+                     "Corixidae", "Asellus")) %>%
+  group_by(Pond, Taxa) %>%
+  summarize(meanD13C = mean(D13C_LFMu)) %>%
+  group_by(Pond) %>%
+  summarize(meanavD13C = mean(meanD13C),
+            maxavD13C = max(meanD13C),
+            minavD13C = min(meanD13C))
+
+#Add mean baseline to each individual of Dataset
+Dataset <- merge(Dataset, BaselineC, by = "Pond", all = TRUE)
+
+#Calcul Ccor
+Dataset %<>% mutate(D13Ccor_consoI = (D13C_LFMu - meanavD13C) / 
+                      (maxavD13C - minavD13C))
+```
+
+
+
+# C- Export dataset
+
+Verify that we still have the correct number of rows
+```{r check nb rows 2}
+dim(Dataset)[1] == 1443
+```
+
+Export the dataset
+``` {r export dataset}
+
+# Create a folder if it does not exist
+if (file.exists(file.path(here(),"exported_data")) == FALSE){
+  dir.create(file.path(here(),"exported_data"))
+}
+
+write.csv(Dataset, file.path(here(), "exported_data", 
+                             "Isotope_data_standardized.csv"), row.names = F)
+```

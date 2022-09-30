@@ -2,7 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-data-raw
-exported_data
+vignettes/00_Data_wrangling.Rmd
+data_raw/raw/
 figures
+exported_data
 sandbox

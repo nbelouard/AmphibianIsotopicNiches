@@ -1,0 +1,24 @@
+Package: IsotopicCoexistence
+Title: Testing The Coexistence Theory With Isotopic Niches
+Version: 0.0.0.9000
+Authors@R: 
+    person("Nadège", "Belouard", , "nadege.belouard@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-7968-7735"))
+Description: What the package does (one paragraph).
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.0.0
+Imports: dplyr
+knitr
+tidyr
+magrittr
+here
+ggplot2
+ggrepel
+siar
+SIBER
+spatstat.utils
+tibble
+reshape2
