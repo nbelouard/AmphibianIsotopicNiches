@@ -1,9 +1,8 @@
-.Rproj.user
-.Rhistory
 .RData
-.Ruserdata
-vignettes/00_Data_wrangling.Rmd
+.Rhistory
 data_raw/raw/
-figures
-exported_data
-sandbox
+data_raw/old/
+exported_data/
+figures/
+sandbox/
+vignettes/00_Data_wrangling.Rmd
