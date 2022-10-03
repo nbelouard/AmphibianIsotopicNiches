@@ -6,3 +6,4 @@ exported_data/
 figures/
 sandbox/
 vignettes/00_Data_wrangling.Rmd
+.Rproj.user
