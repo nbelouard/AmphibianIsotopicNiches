@@ -21,4 +21,10 @@ siar
 SIBER
 spatstat.utils
 tibble
-reshape2
+lme4
+car
+MuMIn
+RVAideMemoire
+Hmisc
+usdm
+gridExtra
