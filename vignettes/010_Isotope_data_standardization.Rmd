@@ -194,7 +194,7 @@ Dataset %<>% mutate(D13Ccor_consoI = (D13C_LFMu - meanavD13C) /
 
 Verify that we still have the correct number of rows
 ```{r check nb rows 2}
-dim(Dataset)[1] == 1443
+dim(Dataset)[1] == 1446
 ```
 
 Export the dataset

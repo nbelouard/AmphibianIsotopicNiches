@@ -661,9 +661,9 @@ Mean_position <- read.csv(file.path(here(), "exported_data",
                                     "Meanposition_SEAc.csv"))
 
 names(Mean_position)[3] = "Code"
-Mean_position %<>% select(-Pond, -Species) 
+Mean_position %<>% dplyr::select(-Pond, -Species) 
 Pop_metrics <- merge(Pop_metrics, Mean_position, by = "Code")
-Pop_metrics %<>% select(Pond, Species, CRcp, NRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg)
+Pop_metrics %<>% dplyr::select(Pond, Species, CRcp, NRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg)
 
 Pop_metrics_long <- rbind(Pop_metrics %>% dcast(Pond ~ Species, value.var = "CRcp") %>% add_column(Metrics = "CRcp"),
       Pop_metrics %>% dcast(Pond ~ Species, value.var = "NRcp") %>% add_column(Metrics = "NRcp"),
@@ -1085,7 +1085,8 @@ for (i in 1:length(CD_global$CDb)) {
 
 CD_global
 
-write.csv(CD_global, file.path(here(), "exported_data", "CD_global.csv"), row.names = F)
+write.csv(CD_global, file.path(here(), "exported_data", "CD_global.csv"), 
+          row.names = F)
 ```
 
 
