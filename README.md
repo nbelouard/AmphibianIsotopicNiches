@@ -11,7 +11,7 @@ This package contains all the data and R code associated with an article current
 Open your R Terminal, and set the working directory to the folder where you want the project to be stored using cd. Then, type:
 
 ```
-git clone git@gitlab.com:nbelouard/coexistence-isoniches.git
+git clone https://github.com/nbelouard/coexistence-isoniches.git
 ```
 
 ## Access and reproduce this analysis
