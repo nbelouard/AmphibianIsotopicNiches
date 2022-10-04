@@ -1,6 +1,7 @@
 ---
 title: "#4: Network plots with ellipses"
-author: "Nadege Belouard"
+author: 
+- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "23/09/2022"
 output: html_document
 editor_options: 
@@ -9,7 +10,7 @@ editor_options:
 
 This vignette draws all the plots related to the trophic networks. First, we load the different packages and datasets that we need.
 
-```{r setup}
+```{r setup, warning = F, message = F}
 library(ggplot2)
 library(ggrepel)
 library(dplyr)

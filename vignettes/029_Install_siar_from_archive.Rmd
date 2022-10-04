@@ -1,13 +1,14 @@
 ---
 title: "Install siar from archive"
-author: "Nadege Belouard"
-date: "29/09/2022"
+author: 
+- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
+date: "23/09/2022"
 output: html_document
 ---
 
 The siar package has been archived and needs to be downloaded from its archive by executing the following chunck of code.
 
-```{r setup}
+```{r setup, message = F, warning = F}
 library(here)
 
 url <- "https://cran.r-project.org/src/contrib/Archive/siar/siar_4.2.tar.gz"

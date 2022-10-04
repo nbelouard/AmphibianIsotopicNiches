@@ -1,6 +1,7 @@
 ---
 title: "#3: Compute niche metrics"
-author: "Nadege Belouard"
+author: 
+- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "23/09/2022"
 output:
   pdf_document:
@@ -33,8 +34,7 @@ Dataset <- read.csv(file.path(here(), "exported_data",
                                        "Isotope_data_standardized.csv"), 
                     header=T)
 
-head(Dataset)
-dim(Dataset)
+kable(Dataset)
 ```
 
 
@@ -51,7 +51,8 @@ Calculate the mean sample weight per taxa
 Dataset %>%
   group_by(Group) %>%
   summarise(meanweight = round(mean(Weight*1000),0), 
-            sdweight = round(sd(Weight*1000),0))
+            sdweight = round(sd(Weight*1000),0)) %>% 
+  kable()
 ```
 
 
@@ -91,12 +92,9 @@ for (i in 1:length(spx)) {
 }
 
 CoordSEAc <- cbind(Species, coordY, coordX)
-summary(CoordSEAc)
 CoordSEAc <- as.data.frame(CoordSEAc)
 CoordSEAc$coordY <- as.numeric(as.character(CoordSEAc$coordY))
 CoordSEAc$coordX <- as.numeric(as.character(CoordSEAc$coordX))
-str(CoordSEAc)
-head(CoordSEAc)
 
 write.csv(CoordSEAc, file.path(here(), "exported_data", 
                                "Coordinates_SEAc_regional.csv"), row.names = F)
@@ -170,7 +168,7 @@ Table$Prct_overlap <- round(as.numeric(Table$AreaOverlap) / (as.numeric(Table$Ar
 Table$Prct_overlap_sp2 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp2),4)
 Table$Prct_overlap_sp1 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp1),4)
 
-head(Table)
+kable(Table)
 
 write.csv(Table, file.path(here(), "exported_data", 
                            "Overlap_regional_niches.csv"), row.names = F)
@@ -189,7 +187,7 @@ We calculate population metrics for amphibians and crayfish.
 
 We begin with selecting the species of interest and removing populations with inadequate samples sizes, i.e. large populations with n < 10. Some populations have n < 10 but are kept because we have good indicators from CMR that the sample size is representative of the population.
 
-```{r select appropriate populations}
+```{r select appropriate populations, message = F, warning = F}
 
 Subset_Dataset <- Dataset %>% dplyr::filter(!Group == "C1")
 
@@ -271,7 +269,7 @@ Pop_metrics_Layman$Code <- rownames(Pop_metrics_Layman)
 ## b- Layman metrics with bootstrapping
 Now we calculate the equivalent using the bootstrapping method. For each pop, we sample 10 individuals in the population, calculate the 6 metrics of Layman, then do it again 999 times.
 
-```{r calculate Layman metrics with bootstrapping for populations, include=FALSE}
+```{r calculate Layman metrics with bootstrapping for populations}
 
 # Make sure we find the same results everytime by setting the seed
 set.seed(10)
@@ -322,7 +320,7 @@ for (j in 1:length(spx)) {
 ```
 
 
-```{r calculate average bootstrapped Layman metrics for populations, include=FALSE}
+```{r calculate average bootstrapped Layman metrics for populations}
 
 Pop_metrics_bootstrapped <- as.data.frame(cbind(NRb = colMeans(dNR), 
                                   CRb = colMeans(dCR), 
@@ -337,7 +335,7 @@ Pop_metrics_bootstrapped <- as.data.frame(cbind(NRb = colMeans(dNR),
 ## c- SEA metrics
 Finally, we calculate TA, SEA and SEAc for populations from Layman. 
 
-```{r calculate population ellipses, include=FALSE}
+```{r calculate population ellipses}
 
 Subset_Dataset_ellipses <- Subset_Dataset %>% 
   dplyr::select("iso1" = D13Ccor_consoI, "iso2" = TP, "group" = Species, 
@@ -360,7 +358,7 @@ Pop_metrics_ellipses$Species <- gsub(".*.[.]","",Pop_metrics_ellipses$Code)
 Finally, we merge the three datasets.
 
 
-```{r merge datasets, include=FALSE}
+```{r merge datasets}
 
 Pop_metrics <- merge(Pop_metrics_Layman, Pop_metrics_bootstrapped, by = "Code")
 dim(Pop_metrics)
@@ -407,7 +405,7 @@ write.csv(Pop_metrics,
 
 ## e- SEA coordinates 
 
-```{r population SEAc coordinates, include=FALSE}
+```{r population SEAc coordinates, warning = F, message = F}
 
 Pop <- NULL
 coordY <- NULL
@@ -643,9 +641,9 @@ Table <- as.data.frame(Table)
 Table$Prct_overlap <- round(as.numeric(Table$AreaOverlap) / (as.numeric(Table$AreaSp1)+as.numeric(Table$AreaSp2)),4)
 Table$Prct_overlap_sp2 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp2),4)
 Table$Prct_overlap_sp1 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp1),4)
-Table
 
-# COMMENT THIS LINE AND UNCOMMENT THE NEXT ONE FOR THE COMPLETE DATASET
+head(Table)
+
 write.csv(Table, file.path(here(), "exported_data", "Overlap_populations.csv"), 
           row.names = F)
 

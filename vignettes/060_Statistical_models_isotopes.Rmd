@@ -1,7 +1,7 @@
 ---
 title: "#6: Statistical models"
 author: 
-- Nadege Belouard^[EcoBio, nadege.belouard@gmail.com]
+- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "23/09/2022"
 output:
   pdf_document:
@@ -214,7 +214,6 @@ CR_agile <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Agile_frog),
                                 "#56B4E9", "#CC79A7")) +
   theme_classic() +
   theme(legend.position="none")
-CR_agile
 
 
 CR_marbre <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Marbled_newtCPUE), 
@@ -227,7 +226,7 @@ CR_marbre <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Marbled_newtCPUE),
   ylab("log(CRcp)") +
   theme_classic() +
   theme(legend.position="none")
-CR_marbre
+
 
 CR_canopy <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Canopycover), 
                                      group = Species)) +
@@ -239,7 +238,6 @@ CR_canopy <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Canopycover),
   ylab("log(CRcp)") +
   theme_classic() +
   theme(legend.position="none")
-CR_canopy
 
 
 CR_crayfish <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(CrayfishCPUE), 
@@ -251,7 +249,7 @@ CR_crayfish <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(CrayfishCPUE),
   ylab("log(CRcp)") +
   theme_classic() +
   theme(legend.position="none")
-CR_crayfish
+
 
 g <- grid.arrange(CR_agile, CR_marbre, CR_canopy, CR_crayfish, ncol = 2)
 g
