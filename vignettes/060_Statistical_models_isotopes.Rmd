@@ -1,5 +1,5 @@
 ---
-title: "Local isotopic niche partitioning and the coexistence between native amphibians and invasive crayfish #6: Statistical models"
+title: "#6: Statistical models"
 author: 
 - Nadege Belouard^[EcoBio, nadege.belouard@gmail.com]
 date: "23/09/2022"

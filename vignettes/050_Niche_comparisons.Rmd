@@ -1,5 +1,5 @@
 ---
-title: "Local isotopic niche partitioning and the coexistence between native amphibians and invasive crayfish #5: Niche comparison"
+title: "#5: Niche comparison"
 author: 
 - Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
 date: "10/08/2020"

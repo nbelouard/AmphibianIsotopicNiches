@@ -1,5 +1,5 @@
 ---
-title: 'Local isotopic niche partitioning and the coexistence between native amphibians and invasive crayfish #1: Isotope data standardization'
+title: '#1: Isotope data standardization'
 author: "Nadege Belouard"
 date: "23/09/2022"
 output:
