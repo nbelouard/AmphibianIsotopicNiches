@@ -8,15 +8,16 @@ output: html_document
 The siar package has been archived and needs to be downloaded from its archive by executing the following chunck of code.
 
 ```{r setup}
+library(here)
 
 url <- "https://cran.r-project.org/src/contrib/Archive/siar/siar_4.2.tar.gz"
 pkgFile <- "siar_4.2.tar.gz"
-download.file(url = url, destfile = pkgFile)
-untar("siar_4.2.tar.gz")
+download.file(url = url, destfile = file.path(here(), pkgFile))
+untar(file.path(here(), "siar_4.2.tar.gz"), exdir = file.path(here()))
 # Install dependencies list in the DESCRIPTION file
 install.packages(c("hdrcde", "coda", "MASS", "bayesm", "mnormt", "spatstat", "tmvnsim"))
 # Install package
-install.packages(pkgs=pkgFile, type="source", repos=NULL)
+install.packages(pkgs=file.path(here(), "siar_4.2.tar.gz"), type="source", repos=NULL)
 # Delete package tarball
-unlink(pkgFile)
+unlink(file.path(here(), "siar_4.2.tar.gz"))
 ```

@@ -13,17 +13,16 @@ This vignette computes all isotopic niche metrics relative to populations and co
 We first load the packages and the dataset.
 
 ```{r setup, warning = F, message = F}
-library(siar)
 library(SIBER)
 library(dplyr)
-library(spatstat.utils)
 library(ggplot2)
 library(here)
 library(magrittr)
 library(tidyr)
 library(tibble)
+library(siar)
 library(reshape2)
-
+library(spatstat.utils)
 ```
 
 
@@ -161,7 +160,7 @@ AreaSp2 <- append(AreaSp2, Overlap$area2, after = length(AreaSp2))
 
 
 Visualize regional overlaps and export them
-``` {r analyses of overlaps}
+``` {r analyses of regional overlaps}
 
 Table <- cbind(Species1, Species2, AreaOverlap = round(AreaOverlap,4), 
              AreaSp1 = round(AreaSp1,4), AreaSp2 = round(AreaSp2,4))
@@ -170,7 +169,8 @@ Table <- as.data.frame(Table)
 Table$Prct_overlap <- round(as.numeric(Table$AreaOverlap) / (as.numeric(Table$AreaSp1)+as.numeric(Table$AreaSp2)),4)
 Table$Prct_overlap_sp2 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp2),4)
 Table$Prct_overlap_sp1 <- round(as.numeric(Table$AreaOverlap) / as.numeric(Table$AreaSp1),4)
-Table
+
+head(Table)
 
 write.csv(Table, file.path(here(), "exported_data", 
                            "Overlap_regional_niches.csv"), row.names = F)
@@ -459,7 +459,7 @@ write.csv(Mean_position, file.path(here(), "exported_data",
 
 ## f- Area of ellipses overlap
 
-````{r area of ellipses overlap: initialize vectors}
+```{r area of ellipses overlap: initialize vectors}
 
 #Split dataset by species
 Crayfish <- Subset_Dataset %>% filter(Species == "Crayfish")
@@ -634,7 +634,7 @@ for (i in names(spx_Palmatenewt)) {
 
 ## Analyses of overlap areas
 
-``` {r analyses of overlaps}
+``` {r analyses of population overlaps}
 
 Table <- cbind(Pond, Species1, Species2, AreaOverlap = round(AreaOverlap,4), 
              AreaSp1 = round(AreaSp1,4), AreaSp2 = round(AreaSp2,4))
@@ -763,8 +763,8 @@ Layman_palmate$Code <- rownames(Layman_palmate)
 Layman_palmate %<>% mutate(Species = "Palmate newt") 
 ```
 
-Calculate Layman metrics - Palmate newt pop vs global
-```{r calculate Layman metrics for palmate newt}
+Calculate Layman metrics - Marbled newt pop vs global
+```{r calculate CD for marbled newt}
 
 # Select
 Marbled_dataset <- Subset_Dataset %>% filter(Species == "Marbled newt")
@@ -1083,7 +1083,6 @@ for (i in 1:length(CD_global$CDb)) {
   }
 }
 
-CD_global
 
 write.csv(CD_global, file.path(here(), "exported_data", "CD_global.csv"), 
           row.names = F)

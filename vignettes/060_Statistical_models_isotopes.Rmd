@@ -103,7 +103,7 @@ dim(Pop_dataset)[1] == 44
 
 First, we test the correlation between metrics, in order to determine whether some of them are irrelevant to test.
 
-```{r compare metrics, include=FALSE}
+```{r compare metrics}
 
 Metrics <- merge(CD_global,
                      Pop_amphib) %>% 
@@ -125,7 +125,7 @@ For each metric tested, we (1) check GOF of a simple model, and transform the me
 
 ### CR
 
-```{r check GOF for CR, include=FALSE}
+```{r check GOF for CR}
 # mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Pond), na.action="na.fail", data=Pop_dataset)
 mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Species) + (1|Pond), 
              na.action="na.fail", data=Pop_dataset)
@@ -138,7 +138,7 @@ plotresid(mod1)
 Residuals do not look ok, there are 2 or 3 outliers. We try to log-transform CR to obtain normal residuals.
 
 
-```{r check GOF for log-transformed CR, include=FALSE}
+```{r check GOF for log-transformed CR}
 #Transform metric to obtain normal residuals
 mod2 <- lmer(log(CRcp) ~ scale(Canopycover) + (1|Species) + (1|Pond), 
              na.action="na.fail", data=Pop_dataset)
@@ -151,7 +151,7 @@ plotresid(mod2)
 
 Residuals are better after CR is log-transformed, even though they are still not completely normal. We proceed with the transformed CR and will have a look at residuals of selected models.
 
-```{r dredge CR model, include=FALSE}
+```{r dredge CR model}
 #Test variables
 mod_CR <- lmer(log(CRcp) ~ 
                  scale(Area) + scale(Canopycover) + scale(Aq_VegCover) +
@@ -169,7 +169,7 @@ CR_select
 
 Two models are retained in deltaAIC < 2. 
 
-```{r check the content of each model for CR, include=FALSE}
+```{r check the content of each model for CR}
 # Check the content of each model selected
 CR_list <- dredge(mod_CR, rank=AICc, m.lim=c(0,2), extra="R^2", evaluate=FALSE)
 length(CR_list)
@@ -180,9 +180,7 @@ Model_selected2 <- lmer(log(CRcp) ~ scale(Agile_frog) + scale(Marbled_newtCPUE) 
              na.action="na.fail", data=Pop_dataset)
 plotresid(Model_selected2)
 res <- summary(Model_selected2)
-res
 round(res$coefficients,2)
-ranef(Model_selected1)
 Anova(Model_selected2)
 
 CR_list$'10' # agile frog, canopy cover
@@ -191,13 +189,12 @@ Model_selected1 <- lmer(log(CRcp) ~ scale(Agile_frog) + scale(Canopycover) +
              na.action="na.fail", data=Pop_dataset)
 plotresid(Model_selected1)
 res <- summary(Model_selected1)
-res
 round(res$coefficients,2)
 Anova(Model_selected1)
 ```
 
-## Figure 3
-```{r corresponding figures for CR, include=FALSE}
+## Figure 3: significant variables for CR
+```{r corresponding figures for CR}
 
 
 Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
@@ -257,6 +254,7 @@ CR_crayfish <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(CrayfishCPUE),
 CR_crayfish
 
 g <- grid.arrange(CR_agile, CR_marbre, CR_canopy, CR_crayfish, ncol = 2)
+g
 ggsave(file.path(here(), "figures", "CRcp.jpg"), g, width = 6, height = 6)
 
 ``` 
@@ -267,7 +265,7 @@ ggsave(file.path(here(), "figures", "CRcp.jpg"), g, width = 6, height = 6)
 
 Next, we analyze NR.
 
-```{r check GOF for NR, include=FALSE}
+```{r check GOF for NR}
 
 #Check residuals
 mod1<-lmer(NRcp ~ scale(Canopycover) + (1|Species), na.action="na.fail", 
@@ -277,7 +275,7 @@ plotresid(mod1)
 
 The model has singularities. Residuals appear correct but can be improved.
 
-```{r check GOF for log-transformed NR, include=FALSE}
+```{r check GOF for log-transformed NR}
 #Transform metric
 mod2<-lmer(log(NRcp) ~ scale(Canopycover) + (1|Species), na.action="na.fail", 
            data=Pop_dataset)
@@ -286,7 +284,7 @@ plotresid(mod2)
 Residuals are not really improved by the transformation. We can transform the metric or keep it untransformed.
 
 
-```{r dredge NR model, include=FALSE}
+```{r dredge NR model}
 
 mod_NR<-lmer(log(NRcp) ~ scale(Area) + scale(Canopycover) + scale(Aq_VegCover) +
                scale(CrayfishCPUE) +

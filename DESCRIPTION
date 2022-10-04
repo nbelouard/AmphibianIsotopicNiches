@@ -24,5 +24,6 @@ Imports: dplyr,
   RVAideMemoire,
   Hmisc,
   usdm,
-  gridExtra
+  gridExtra,
+  reshape2
 Encoding: UTF-8

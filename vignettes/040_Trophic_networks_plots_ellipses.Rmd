@@ -48,8 +48,8 @@ We summarize each taxa by the average point and its SD to graphically represent 
 
 # Plots with ellipses per species
 
-## Figure 1
-```{r plot network with ellipses per species and all individuals, include=FALSE}
+## Figure 1: ellipses per species with points
+```{r plot network with ellipses per species and all individuals}
 
 # With outliers
 M_ind <- Dataset %>% filter (Group %in% c("Crayfish", "Amphibians"))
@@ -72,12 +72,15 @@ species_ellipses <- ggplot(data = M_ind, aes(x = D13Ccor_consoI, y = TP)) +
   theme_classic() + 
   theme(legend.justification = c(0, 1), legend.position = c(0, 1))
 
+species_ellipses
+
 ggsave(species_ellipses, filename = file.path(here(), "figures", 
                                               "ellipses_species.jpg"), 
        height = 4, width = 6)
+```
 
-
-# figure with ellipses only
+## Figure with ellipses only
+```{r plot network with ellipses per species, no points}
 species_ellipses <- ggplot() +
   geom_path(data = M_coord, aes(coordX, coordY, col = Species), lwd = 1.5) +
   scale_color_manual(values = c("#0072B2", "#E69F00",
@@ -96,32 +99,14 @@ ggsave(species_ellipses, filename = file.path(here(), "figures", "ellipses_speci
 
 # Plots with ellipses per population per pond
 
-## Figure 2
-```{r plot ellipses only, include=FALSE}
+## Figure 2: plots with ellipses per population with points
+```{r plot ellipses per population with points}
 
 M_ind$Species <- factor(M_ind$Species, levels = c("Crayfish",
                                                     "Agile frog",
                                                     "Tree frog",
                                                     "Palmate newt",
                                                     "Marbled newt"))
-
-# Facet wrap ellipses
-ellipses_pop <- ggplot() +
-  theme_classic() +
-  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species), 
-            size=2, linetype=1) +
-  scale_color_manual(values = c("#0072B2", "#E69F00",
-                                          "#CC79A7", "#56B4E9", 
-                                          "#009E73")) +
-  facet_wrap(~Pond, scales = "free_x") +
-  xlab(bquote(''*delta^13~C["cor"]*'')) +
-  ylab("Trophic position")
-
-ellipses_pop
-ggsave(ellipses_pop, filename = file.path(here(), "figures", 
-                                          "ellipses_pop.jpg"), 
-       width = 15, height = 10)
-
 
 # Set limits for x values
 blank_data <- data.frame(Pond_code = c("U01", "0U1", 
@@ -194,4 +179,22 @@ ggsave(ellipses_pop, filename = file.path(here(), "figures",
                                           "ellipses_pop_points.jpg"),
        width = 15, height = 10)
 
+```
+
+## Figure with ellipses only
+```{r plot ellipses per population only}
+ellipses_pop <- ggplot() +
+  theme_classic() +
+  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species), 
+            size=2, linetype=1) +
+  scale_color_manual(values = c("#0072B2", "#E69F00",
+                                          "#CC79A7", "#56B4E9", 
+                                          "#009E73")) +
+  facet_wrap(~Pond, scales = "free_x") +
+  xlab(bquote(''*delta^13~C["cor"]*'')) +
+  ylab("Trophic position")
+
+ggsave(ellipses_pop, filename = file.path(here(), "figures", 
+                                          "ellipses_pop.jpg"), 
+       width = 15, height = 10)
 ```
