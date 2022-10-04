@@ -17,7 +17,7 @@ git clone git@gitlab.com:nbelouard/coexistence-isoniches.git
 ## Access and reproduce this analysis
 
 If you wish to reproduce the analyses, once the project is cloned locally:
-- access the folder and open the coexistence_isoniches.Rproj file to open the project in Rstudio
+- access the folder and open the coexistence-isoniches.Rproj file to open the project in Rstudio
 - install the package using the R button "install and restart" in the Build tab of Rstudio. 
 
 
