@@ -6,6 +6,15 @@ Invasive species are widely reported to cause local extinctions of native specie
 
 This package contains all the data and R code associated with an article currently submitted to Journal of Animal Ecology.
 
+## Pre-requisites
+
+Please make sure Git is installed on your computer by typing the following line of code in R Terminal (Tools > Terminal > New terminal). If Git is not installed, you will need to download and install Git.
+```
+git --version 
+```
+
+Please make sure you are using the latest version of R (Help > Check for updates) and that all your packages are up to date (Tools > Check for package updates)
+
 ## Clone this project locally
 
 Open your R Terminal, and set the working directory to the folder where you want the project to be stored using cd. Then, type:
