@@ -29,7 +29,6 @@ devtools::document()
 ```
 
 
-
 ## Access and reproduce this analysis
 
 You can manually access the analyses by opening the vignettes (folder vignettes/).  
