@@ -28,7 +28,6 @@ Then, access the folder and open the coexistence-isoniches.Rproj file to open th
 devtools::document()
 ```
 
-Finish the project installation by clicking on "Install and restart" in the Build tab of Rstudio. 
 
 
 ## Access and reproduce this analysis
