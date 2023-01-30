@@ -46,7 +46,21 @@ library(here)
 
 ```{r load datasets}
 #Load datasets
-Envt <- read.csv(file.path(here(), "data_raw", "Raw_environment.csv"), h = T)
+Envt <- read.csv(here::here("data_raw", "Raw_environment.csv"), h = T)
+Envt %<>% filter(Pond != c("I03", "I14"))
+
+plot(Envt$Aq_VegCover ~ Envt$CrayfishCPUE)
+anova(lm(Envt$Aq_VegCover ~ Envt$CrayfishCPUE))
+
+Envt_notbest <- Envt %>% filter(!Pond_name %in% c("56", "17_2017", "48", "22", "87", "94"))
+
+plot(Envt_notbest$Aq_VegCover ~ Envt_notbest$CrayfishCPUE)
+anova(lm(Envt_notbest$Aq_VegCover ~ Envt_notbest$CrayfishCPUE))
+
+plot(Envt_notbest$Canopycover ~ Envt_notbest$CrayfishCPUE)
+anova(lm(Envt_notbest$Canopycover ~ Envt_notbest$CrayfishCPUE))
+
+
 
 # Dataset
 Niche_metrics <- read.csv(file.path(here(), "exported_data", 
@@ -93,8 +107,8 @@ Pop_amphib <- Pop_metrics %>% filter(Clade == "Amphibians")
 
 #Merge metrics and explicative variables
 Pop_dataset <- merge(Pop_amphib, Candidate, by = "Pond")
-print("Is there still 44 populations in the dataset?")
-dim(Pop_dataset)[1] == 44
+print("Is there still 41 populations in the dataset?")
+dim(Pop_dataset)[1] == 41
 
 ```
 
@@ -126,27 +140,20 @@ For each metric tested, we (1) check GOF of a simple model, and transform the me
 ### CR
 
 ```{r check GOF for CR}
-# mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Pond), na.action="na.fail", data=Pop_dataset)
-mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Species) + (1|Pond), 
+mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Species), 
              na.action="na.fail", data=Pop_dataset)
 plotresid(mod1)
 
-mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Species) + (1|Pond), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod1)
 ```
 Residuals do not look ok, there are 2 or 3 outliers. We try to log-transform CR to obtain normal residuals.
 
 
 ```{r check GOF for log-transformed CR}
 #Transform metric to obtain normal residuals
-mod2 <- lmer(log(CRcp) ~ scale(Canopycover) + (1|Species) + (1|Pond), 
+mod2 <- lmer(log(CRcp) ~ scale(Canopycover) + (1|Species), 
              na.action="na.fail", data=Pop_dataset)
 plotresid(mod2)
 
-mod2 <- lmer(log(CRcp) ~ scale(Canopycover) + (1|Species) + (1|Pond), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod2)
 ```
 
 Residuals are better after CR is log-transformed, even though they are still not completely normal. We proceed with the transformed CR and will have a look at residuals of selected models.
@@ -176,7 +183,7 @@ length(CR_list)
 
 CR_list$'34' #agile frog, marbled newt
 Model_selected2 <- lmer(log(CRcp) ~ scale(Agile_frog) + scale(Marbled_newtCPUE) + 
-                          (1|Pond) + (1|Species),
+                          (1|Species),
              na.action="na.fail", data=Pop_dataset)
 plotresid(Model_selected2)
 res <- summary(Model_selected2)
@@ -195,7 +202,6 @@ Anova(Model_selected1)
 
 ## Figure 3: significant variables for CR
 ```{r corresponding figures for CR}
-
 
 Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
                                                     "Agile frog",
@@ -294,6 +300,11 @@ NR_dredge <- dredge(mod_NR, rank=AICc, m.lim=c(0,2), extra="R^2")
 NR_select <- subset(NR_dredge, delta<2)
 NR_select
 
+mod_NR<-lmer(log(NRcp) ~ 1 + (1|Species), na.action="na.fail", 
+             data=Pop_dataset)
+res <- summary(mod_NR)
+round(res$coefficients,2)
+Anova(mod_NR)
 ```
 
 Only the null is retained within deltaAIC < 2.
