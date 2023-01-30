@@ -66,12 +66,14 @@ metrics_agile <- Pop_metrics %>% filter(Species == "Agile frog")
 
 metrics <- rbind(metrics_crayfish, metrics_agile)
 # select ponds where both species are
-metrics %<>% filter(Pond %in% c("I02", "I03", "I04", "I05",
+metrics %<>% filter(Pond %in% c("I02", #"I03", 
+                                "I04", "I05",
                                 "I06", "I08", "I09", "I10", 
                                 "I11"))
 
 metrics %>% group_by(Species) %>% summarise(
                                              meanSEAc = mean(SEAc),
+                                             sdSEAc = sd(SEAc),
                                              meanNR = mean(NRcp),
                                              meanCDreg = mean(CDreg)
                                              )
@@ -86,9 +88,9 @@ metrics_pivoted <- pivot_wider(metrics, names_from = Species,
 # Test par permutation sur la différence de moyenne :
 # Calculate the difference between the two species
 metrics_pivoted %<>% mutate(
-                            diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
+                            #diffNR = NRcp_Crayfish - `NRcp_Agile frog`,
                             diffSEAc = SEAc_Crayfish - `SEAc_Agile frog`,
-                            diffCDreg = CDreg_Crayfish - `CDreg_Agile frog`
+                            #diffCDreg = CDreg_Crayfish - `CDreg_Agile frog`
                             )
 
 
@@ -109,8 +111,8 @@ for (i in 1:sim) { #in each simulation
 tirage = sample(c(-1,1), size = k, replace = T)
 # append the average in the vector
 permSEAc[i] = mean(metrics_pivoted$diffSEAc * tirage)
-permNR[i] = mean(metrics_pivoted$diffNR * tirage)
-permCDreg[i] = mean(metrics_pivoted$diffCDreg * tirage)
+# permNR[i] = mean(metrics_pivoted$diffNR * tirage)
+# permCDreg[i] = mean(metrics_pivoted$diffCDreg * tirage)
 }
 
 #add the observed difference as the final item in the vector
@@ -123,15 +125,15 @@ permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
-pNR #p =0.0453
+pNR #p =0.0888
 
-tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
+tablepropSEAc = table(abs(permSEAc) >= mean(metrics_pivoted$diffSEAc))
 pSEAc = tablepropSEAc[2]/10000
-pSEAc # p = 0.0094
+pSEAc # p = 0.0154
 
 tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
 pCDreg = tablepropCDreg[2]/10000
-pCDreg # p = 0.0396
+pCDreg # p = 0.0551
 
 ```
 
@@ -143,10 +145,12 @@ metrics_crayfish <- Pop_metrics %>% filter(Species == "Crayfish")
 metrics_treefrog <- Pop_metrics %>% filter(Species == "Tree frog") 
 
 metrics <- rbind(metrics_crayfish, metrics_treefrog)
-metrics %<>% filter(Pond %in% c("I02", "I03", "I04", "I10"))
+metrics %<>% filter(Pond %in% c("I02", #"I03", 
+                                "I04", "I10"))
 
 metrics %>% group_by(Species) %>% summarise(
                                              meanSEAc = mean(SEAc),
+                                             sdSEAc = sd(SEAc),
                                              meanNR = mean(NRcp),
                                              meanCDreg = mean(CDreg)
                                              )
@@ -195,7 +199,7 @@ permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 print("p-value for NR")
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
-pNR #p = 0.3837 no diff
+pNR #p = 0.7503 no diff
 
 print("p-value for SEAc")
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
@@ -207,8 +211,9 @@ print("All simulations are TRUE, so p > 0.9999, no difference")
 print("p-value for CDreg")
 tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
 pCDreg = tablepropCDreg[2]/10000
-pCDreg #p = 0.8803 no diff
-
+pCDreg 
+tablepropCDreg
+print("All simulations are TRUE, so p > 0.9999, no difference")
 ```
 
 \newpage
@@ -220,10 +225,12 @@ metrics_crayfish <- Pop_metrics %>% filter(Species == "Crayfish")
 metrics_palmate <- Pop_metrics %>% filter(Species == "Palmate newt")
 
 metrics <- rbind(metrics_crayfish, metrics_palmate)
-metrics %<>% filter(Pond %in% c("I02", "I03", "I04", "I08", "I11"))
+metrics %<>% filter(Pond %in% c("I02", #"I03", 
+                                "I04", "I08", "I11"))
 
 metrics %>% group_by(Species) %>% summarise(
-                                             meanSEAc = round(mean(SEAc),2),
+                                             meanSEAc = round(mean(SEAc),3),
+                                             sdSEAc = sd(SEAc),
                                              meanNR = round(mean(NRcp),2),
                                              meanCDreg = round(mean(CDreg),2)
                                              )
@@ -271,17 +278,17 @@ permCDreg[10000] = mean(metrics_pivoted$diffCDreg)
 print("p-value for NR")
 tablepropNR = table(abs(permNR) >= abs(mean(metrics_pivoted$diffNR)))
 pNR = tablepropNR[2]/10000
-pNR # p = 0.5024
+pNR # p = 0.256
 
 print("p-value for SEAc")
 tablepropSEAc = table(abs(permSEAc) >= abs(mean(metrics_pivoted$diffSEAc)))
 pSEAc = tablepropSEAc[2]/10000
-pSEAc # p = 0.0652
+pSEAc # p = 0.1288
 
 print("p-value for CDreg")
 tablepropCDreg = table(abs(permCDreg) >= abs(mean(metrics_pivoted$diffCDreg)))
 pCDreg = tablepropCDreg[2]/10000
-pCDreg # p = 0.1905
+pCDreg # p = 0.1288
 
 ```
 

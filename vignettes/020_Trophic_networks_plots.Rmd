@@ -33,11 +33,10 @@ We summarize each taxa by the average point and its SD to graphically represent 
 ```{r averaged points, warning = F, message = F}
 
 Avg_data_raw <- Dataset %>% group_by(Taxa, Pond) %>%
-  summarise(D15Navg = mean(D15N_Mu),
-            D13Cavg = mean(D13C_LFMu),
-            D15Nsd = sd(D15N_Mu),
-            D13Csd = sd(D13C_LFMu))
-
+  summarise(D15Navg = mean(D15N),
+            D13Cavg = mean(D13C),
+            D15Nsd = sd(D15N),
+            D13Csd = sd(D13C))
 ```
 
 
@@ -50,26 +49,73 @@ if (file.exists(file.path(here(), "figures", "0.raw")) == FALSE){
 }
 
 for (i in levels(as.factor(Dataset$Pond))) {
-  M_ind <- Dataset %>% filter(Pond == i)
-  M_avg <- Avg_data_raw %>% filter(Pond == i)
-
-f <- ggplot(data = M_ind, aes(x = D13C, y = D15N), show.legend = F) + 
+  M_ind <- Dataset %>% filter(Pond == i) %>%
+    filter(Group %in% c("Crayfish", "Amphibians"))
+  M_ind_C1 <- Dataset %>% filter(Pond == i) %>%
+    filter(!Group %in% c("Crayfish", "Amphibians"))
+  M_avg <- Avg_data_raw %>% filter(Pond == i) %>%
+  filter (!Taxa %in% c("Ad crayfish", "Juv crayfish", "Agile frog", "Tree frog", 
+                       "Palmate newt", "Marbled newt"))
+  
+f <- ggplot(data = M_avg, aes(x = D13Cavg, y = D15Navg), show.legend = F) + 
   theme_classic() +
   ggtitle(i) +
-  geom_point(data = M_ind, aes(x = D13C, y = D15N, colour = Taxa), 
-             show.legend = F)+ 
-  geom_text_repel(data = M_avg, aes(x = D13Cavg, y = D15Navg, label = Taxa, 
-                                    colour = Taxa), 
-                  size = 3, hjust = 0, vjust = 1, show.legend = F) +
+  geom_text_repel(data = M_avg,
+                  aes(x = D13Cavg, y = D15Navg, label = Taxa),
+                      colour = "darkgray", size = 3, show.legend = F) +
+  geom_errorbar(data = M_avg,
+                aes(y = D15Navg, ymin = D15Navg - D15Nsd, ymax = D15Navg + D15Nsd),
+                colour = "darkgrey", width = 0.05, show.legend = F) +
+  geom_errorbar(data = M_avg,
+                 aes(x = D13Cavg, xmin = D13Cavg - D13Csd,
+                     xmax = D13Cavg + D13Csd),
+                 colour = "darkgrey", width = 0.05, show.legend = F) +
+    geom_point(data = M_ind, aes(x = D13C, y = D15N), colour = "darkgrey",
+             size = 1, show.legend = F)+
+   geom_point(data = M_ind_C1, aes(x = D13C, y = D15N, colour = Taxa),
+             size = 1, show.legend = F)+
   xlab(expression(paste('D'^{13},'C'))) + 
   ylab(expression(paste('D'^{15},'N')))
 
 ggsave(f, filename = file.path(here(), "figures", "0.raw", 
                                paste("P",i,"_raw.png",sep="")), 
-       width=6, height=6)
+       width=4, height=4)
 
 }
 
+
+
+# facet wrap version
+Data_interest <- Dataset %>%
+    filter(Group %in% c("Crayfish", "Amphibians"))
+Data_C1 <- Dataset %>% 
+  filter(!Group %in% c("Crayfish", "Amphibians")) %>% 
+  filter(!Taxa %in% c("Zooplankton", "Gammarus", "Asellus"))
+  
+f <- ggplot(data = Avg_data_raw, aes(x = D13Cavg, y = D15Navg), show.legend = F) + 
+  # theme_classic() +
+  geom_errorbar(data = Avg_data_raw %>%
+  filter (!Taxa %in% c("Ad crayfish", "Juv crayfish", "Agile frog", "Tree frog", 
+                       "Palmate newt", "Marbled newt")),
+                aes(y = D15Navg, ymin = D15Navg - D15Nsd, ymax = D15Navg + D15Nsd,
+                colour = Taxa), width = 0.05, show.legend = F) +
+  geom_errorbar(data = Avg_data_raw %>%
+  filter (!Taxa %in% c("Ad crayfish", "Juv crayfish", "Agile frog", "Tree frog", 
+                       "Palmate newt", "Marbled newt")),
+                 aes(x = D13Cavg, xmin = D13Cavg - D13Csd,
+                     xmax = D13Cavg + D13Csd,
+                 colour = Taxa), width = 0.05, show.legend = F) +
+   geom_point(data = Data_C1, aes(x = D13C, y = D15N, colour = Taxa),
+             size = 1)+
+  facet_wrap(~Pond) +
+  xlab(expression(paste('D'^{13},'C'))) + 
+  ylab(expression(paste('D'^{15},'N')))
+
+f
+
+ggsave(f, filename = file.path(here(), "figures", "0.raw", 
+                               "global.png", sep=""), 
+       width=10, height=10)
 ```
 
 
@@ -265,7 +311,7 @@ ggsave(f, filename = file.path(here(), "figures", "5.C_correction", paste("P",i,
 
 # 4- Plot standardized data
 
-These plots show standardized trophic networks (TP and D13Ccor).
+These plots show standardized trophic networks (TP and D13Ccor) with the species of interest, not the C1 baseline taxa
 
 ```{r plot standardized networks consoI, message = F, warning = F}
 
@@ -303,13 +349,12 @@ f <- ggplot(data = M_avg, aes(x = D13Cavg, y = TPavg)) +
              size = 1, show.legend=F) +
   xlim(c(min(Dataset$D13Ccor_consoI), max(Dataset$D13Ccor_consoI))) +
   ylim(c(min(Dataset$TP), max(Dataset$TP))) +
-  xlab(expression(paste('D'^{13},'C corrected and stardized' ))) + 
+  xlab(expression(paste('D'^{13},'C corrected and standardized' ))) + 
   ylab("TP")
 
 ggsave(f, filename = file.path(here(), "figures", "6.standardized_networks", paste("P",i,"_std.png",sep="")), width=6, height=6)
 }
 ```
-
 
 
 All the figures produced by this vignette can be found in the subfolder "figures".

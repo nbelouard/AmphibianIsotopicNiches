@@ -231,11 +231,11 @@ Check if the number of populations is correct
 
 ```{r check number of individuals is correct}
 
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Agile frog",])[1] == 274 
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Tree frog",])[1] == 187
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Palmate newt",])[1] == 209
+dim(Subset_Dataset[Subset_Dataset$Taxa=="Agile frog",])[1] == 254 
+dim(Subset_Dataset[Subset_Dataset$Taxa=="Tree frog",])[1] == 187-19
+dim(Subset_Dataset[Subset_Dataset$Taxa=="Palmate newt",])[1] == 209-17
 dim(Subset_Dataset[Subset_Dataset$Taxa=="Marbled newt",])[1] == 101
-dim(Subset_Dataset[Subset_Dataset$Species=="Crayfish",])[1] == 422
+dim(Subset_Dataset[Subset_Dataset$Species=="Crayfish",])[1] == 422-31-43
 
 ```
 
@@ -284,7 +284,7 @@ spy <- split(Subset_Dataset$TP,
 
 # Number of bootstrapped required
 nr <- 9999 # the number of reps
-ncol = 57
+ncol = 52
 
 # Create empty vectors to store the results 
 dNR <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
@@ -384,7 +384,10 @@ for (i in 1:length(Pop_metrics$NRb)) {
 }
 
 Pop_metrics <- merge(Pop_metrics, Pop_metrics_ellipses[-1], by = "Code")
-
+Pop_metrics %>% group_by(Pond) %>%
+  filter(Species != "Crayfish") %>%
+  summarise(meanSEAc = mean(SEAc)) %>% 
+  arrange(meanSEAc) 
 
 ggplot(aes(x = as.numeric(CRcp), y = as.numeric(dX_range)), 
        data = Pop_metrics) +

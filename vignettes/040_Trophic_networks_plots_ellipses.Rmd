@@ -71,13 +71,14 @@ species_ellipses <- ggplot(data = M_ind, aes(x = D13Ccor_consoI, y = TP)) +
   guides(col = guide_legend("Species")) +
   ylab("Trophic position") +
   theme_classic() + 
-  theme(legend.justification = c(0, 1), legend.position = c(0, 1))
+  # theme(legend.justification = c(0, 1), legend.position = c(0, 1))
+  theme(legend.position = "right")
 
 species_ellipses
 
 ggsave(species_ellipses, filename = file.path(here(), "figures", 
                                               "ellipses_species.jpg"), 
-       height = 4, width = 6)
+       height = 3.5, width = 5)
 ```
 
 ## Figure with ellipses only
@@ -110,7 +111,7 @@ M_ind$Species <- factor(M_ind$Species, levels = c("Crayfish",
                                                     "Marbled newt"))
 
 # Set limits for x values
-blank_data <- data.frame(Pond_code = c("U01", "0U1", 
+blank_data <- data.frame(Pond_code = c("U01", "U01", 
                                    "U02", "U02", 
                                    "U03", "U03",
                                    "U04", "U04",
@@ -118,7 +119,7 @@ blank_data <- data.frame(Pond_code = c("U01", "0U1",
                                    "U06", "U06",
                                    "I01", "I01",
                                    "I02", "I02",
-                                   "I03", "I03",
+                                   #"I03", "I03",
                                    "I04", "I04",
                                    "I05", "I05",
                                    "I06", "I06",
@@ -128,8 +129,9 @@ blank_data <- data.frame(Pond_code = c("U01", "0U1",
                                    "I10", "I10",
                                    "I11", "I11",
                                    "I12", "I12",
-                                   "I13", "I13",
-                                   "I14", "I14"),
+                                   "I13", "I13"#,
+                                   #"I14", "I14"
+                                   ),
                          y = 1,
                          x = c(-1.5, 1.5, 
                                -2, 1.5, 
@@ -139,6 +141,7 @@ blank_data <- data.frame(Pond_code = c("U01", "0U1",
                                -1.5, 1.5, 
                                -1.5, 1.5, 
                                -1.5, 1.5, 
+                               #-1.5, 1.5, 
                                -1.5, 1.5, 
                                -1.5, 1.5, 
                                -1.5, 1.5, 
@@ -147,15 +150,35 @@ blank_data <- data.frame(Pond_code = c("U01", "0U1",
                                -1.5, 1.5, 
                                -1.5, 1.5, 
                                -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5))
+                               -1.5, 1.5,
+                               -1.5, 1.5#,
+                               #-1.5, 1.5
+                               ))
+
 blank_data$Pond_code <- factor(blank_data$Pond_code, 
-                               levels = c("U1", "U2", "U3", "U4", "U5", "U6",
-                                          "I1", "I2", "I3", "I4", "I5", "I6",
-                                          "I7", "I8", "I9", "I10", "I11", "I12",
-                                          "I13", "I14"))
+                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
+                                          "I01", "I02", #"I3", 
+                                          "I04", "I05", "I06",
+                                          "I07", "I08", "I09", "I10", "I11", "I12",
+                                          "I13"#, "I14"
+                                          ))
+
+M_ind$Pond_code <- factor(M_ind$Pond, 
+                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
+                                          "I01", "I02", #"I3", 
+                                          "I04", "I05", "I06",
+                                          "I07", "I08", "I09", "I10", "I11", "I12",
+                                          "I13"#, "I14"
+                                          ))
+
+
+CoordSEAc_pop$Pond_code <- factor(CoordSEAc_pop$Pond, 
+                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
+                                          "I01", "I02", #"I3", 
+                                          "I04", "I05", "I06",
+                                          "I07", "I08", "I09", "I10", "I11", "I12",
+                                          "I13"#, "I14"
+                                          ))
 
 # Facet wrap ellipses and points
 # Dataset_target <- Dataset %>% filter(!TaxaUsed == "Other")
@@ -163,22 +186,24 @@ blank_data$Pond_code <- factor(blank_data$Pond_code,
 ellipses_pop <- ggplot(data = M_ind, aes(D13Ccor_consoI, TP)) +
   theme_classic() +
   geom_point(aes(col = Species), alpha = 0.7) +
-  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species), 
-            size=1, linetype=1) +
+  # geom_blank(data = blank_data, aes(x = x, y = y)) +
+  # geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species),
+            # size=1, linetype=1) +
   scale_color_manual(values = c("#E69F00", 
                                 "#0072B2", "#009E73", 
                                 "#56B4E9", "#CC79A7")) +
-  geom_blank(data = blank_data, aes(x = x, y = y)) +
-  facet_wrap(~Pond, scales = "free_x") +
+  facet_wrap(~Pond_name, scales = "free_x", 
+             ncol = 3) +
   xlab(bquote(''*delta^13~C["cor"]*'')) +
   ylab("Trophic position") +
-  guides(col = guide_legend("Species"))
+  guides(col = guide_legend("Species")) + 
+  theme(legend.position = "bottom")
 
 ellipses_pop
 
 ggsave(ellipses_pop, filename = file.path(here(), "figures",
-                                          "ellipses_pop_points.jpg"),
-       width = 15, height = 10)
+                                          "ellipses_pop_points_portrait.jpg"),
+       width = 10, height = 15)
 
 ```
 
