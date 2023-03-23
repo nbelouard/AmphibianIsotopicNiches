@@ -1,8 +1,8 @@
 ---
 title: "#3: Compute niche metrics"
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
-date: "23/09/2022"
+- Nadege Belouard^[UMR CNRS EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+date: "23/03/2023"
 output:
   pdf_document:
     toc: yes
@@ -43,6 +43,7 @@ Table of the number of samples per pond
 ```{r number of samples}
 
 table(Dataset$Pond, Dataset$Species)
+table(Dataset$Pond, Dataset$Taxa)
 ```
 
 
@@ -192,30 +193,30 @@ We begin with selecting the species of interest and removing populations with in
 
 Subset_Dataset <- Dataset %>% dplyr::filter(!Group == "C1")
 
-# We want to exclude target populations with n < 10, except three pops: marbled newt in ponds U04 and U06, and palmate newt in pop I08 where we assume we have sampled the entire population.
+# We want to exclude target populations with n < 10, except three pops: marbled newt in ponds P04 and P11, and palmate newt in pop P10 where we assume we have sampled the entire population.
 Subset_Dataset %>% group_by(Species, Pond) %>% summarise(n = n()) %>% 
   filter(n < 10)
 
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Crayfish"|
-                                 !Subset_Dataset$Pond == "I01",]
+                                 !Subset_Dataset$Pond == "P06",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Agile frog"|
-                                 !Subset_Dataset$Pond=="I07",]
+                                 !Subset_Dataset$Pond=="P02",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Agile frog"|
-                                 !Subset_Dataset$Pond=="U02",]
+                                 !Subset_Dataset$Pond=="P17",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Marbled newt"|
-                                 !Subset_Dataset$Pond=="I08",]
+                                 !Subset_Dataset$Pond=="P08",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Marbled newt"|
-                                 !Subset_Dataset$Pond=="I11",]
+                                 !Subset_Dataset$Pond=="P10",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="I05",]
+                                 !Subset_Dataset$Pond=="P07",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond== "I07",]
+                                 !Subset_Dataset$Pond== "P13",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond== "I09",]
+                                 !Subset_Dataset$Pond== "P14",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="I10",]
+                                 !Subset_Dataset$Pond=="P16",]
 Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="I13",]
+                                 !Subset_Dataset$Pond=="P17",]
 
 
 table(Subset_Dataset$Pond, Subset_Dataset$Species)
@@ -232,109 +233,17 @@ Check if the number of populations is correct
 ```{r check number of individuals is correct}
 
 dim(Subset_Dataset[Subset_Dataset$Taxa=="Agile frog",])[1] == 254 
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Tree frog",])[1] == 187-19
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Palmate newt",])[1] == 209-17
+dim(Subset_Dataset[Subset_Dataset$Taxa=="Tree frog",])[1] == 168
+dim(Subset_Dataset[Subset_Dataset$Taxa=="Palmate newt",])[1] == 192
 dim(Subset_Dataset[Subset_Dataset$Taxa=="Marbled newt",])[1] == 101
-dim(Subset_Dataset[Subset_Dataset$Species=="Crayfish",])[1] == 422-31-43
+dim(Subset_Dataset[Subset_Dataset$Species=="Crayfish",])[1] == 348
 
 ```
 
 
-## a- Layman metrics
+## a- Calculation of SEAc
 
-We first calculate the six metrics of Layman (TA, CR, NR, CD, MNND, SDNND) on each population for each pond. This is done by providing a vector containing the list of populations and ponds.
-
-```{r calculate Layman metrics for populations}
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", 
-                                "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], 
-                 all = TRUE)
-}
-
-Pop_metrics_Layman <- as.data.frame(t(Table))
-colnames(Pop_metrics_Layman) <- Pop_metrics_Layman[1,]
-Pop_metrics_Layman <- Pop_metrics_Layman[-1,]
-Pop_metrics_Layman$Code <- rownames(Pop_metrics_Layman)
-
-
-```
-
-
-## b- Layman metrics with bootstrapping
-Now we calculate the equivalent using the bootstrapping method. For each pop, we sample 10 individuals in the population, calculate the 6 metrics of Layman, then do it again 999 times.
-
-```{r calculate Layman metrics with bootstrapping for populations}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Subset_Dataset$D13Ccor_consoI, 
-             list(Subset_Dataset$Pond, Subset_Dataset$Species), drop = TRUE)
-spy <- split(Subset_Dataset$TP, 
-             list(Subset_Dataset$Pond, Subset_Dataset$Species), drop = TRUE)
-
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = 52
-
-# Create empty vectors to store the results 
-dNR <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-dCR <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-TA <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(dNR) <- names(spx)
-names(dCR) <- names(spx)
-names(TA) <- names(spx)
-names(CD) <- names(spx)
-names(MNND) <- names(spx)
-names(SDNND) <- names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      dNR[i,j] <- layman$dN_range
-      dCR[i,j] <- layman$dC_range
-      TA[i,j] <- layman$hull$TA
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-  }
-
-
-```
-
-
-```{r calculate average bootstrapped Layman metrics for populations}
-
-Pop_metrics_bootstrapped <- as.data.frame(cbind(NRb = colMeans(dNR), 
-                                  CRb = colMeans(dCR), 
-                                  TAb = colMeans(TA),
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(dNR)))
-
-```
-
-## c- SEA metrics
-Finally, we calculate TA, SEA and SEAc for populations from Layman. 
+We first calculate SEAc on each population for each pond. This is done by providing a vector containing the list of populations and ponds.
 
 ```{r calculate population ellipses}
 
@@ -355,51 +264,9 @@ Pop_metrics_ellipses$Species <- gsub(".*.[.]","",Pop_metrics_ellipses$Code)
 ```
 
 
-## d- Merge datasets
-Finally, we merge the three datasets.
-
-
 ```{r merge datasets}
 
-Pop_metrics <- merge(Pop_metrics_Layman, Pop_metrics_bootstrapped, by = "Code")
-dim(Pop_metrics)
-
-#Create a composite metric to avoid NAs in bootstrapped metrics
-Pop_metrics$NRcp = Pop_metrics$NRb 
-Pop_metrics$CRcp = Pop_metrics$CRb
-Pop_metrics$TAcp = Pop_metrics$TAb
-Pop_metrics$CDcp = Pop_metrics$CDb
-Pop_metrics$MNNDcp = Pop_metrics$MNNDb
-Pop_metrics$SDNNDcp = Pop_metrics$SDNNDb
-
-for (i in 1:length(Pop_metrics$NRb)) {
-  if (is.na(Pop_metrics$NRb[i]) == TRUE) {
-    Pop_metrics$NRcp[i] <- Pop_metrics$dY_range[i]
-    Pop_metrics$CRcp[i] <- Pop_metrics$dX_range[i]
-    Pop_metrics$TAcp[i] <- Pop_metrics$TA[i]
-    Pop_metrics$CDcp[i] <- Pop_metrics$CD[i]
-    Pop_metrics$MNNDcp[i] <- Pop_metrics$NND[i]
-    Pop_metrics$SDNNDcp[i] <- Pop_metrics$SDNND[i]
-  }
-}
-
-Pop_metrics <- merge(Pop_metrics, Pop_metrics_ellipses[-1], by = "Code")
-Pop_metrics %>% group_by(Pond) %>%
-  filter(Species != "Crayfish") %>%
-  summarise(meanSEAc = mean(SEAc)) %>% 
-  arrange(meanSEAc) 
-
-ggplot(aes(x = as.numeric(CRcp), y = as.numeric(dX_range)), 
-       data = Pop_metrics) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1)
-
-
-ggplot(aes(x = as.numeric(NRcp), y = as.numeric(dY_range)), 
-       data = Pop_metrics) +
-  geom_point() +
-  geom_abline(intercept = 0, slope = 1)
-
+Pop_metrics <- Pop_metrics_ellipses[-1]
 
 write.csv(Pop_metrics, 
           file.path(here(), "exported_data", "Population_metrics.csv"), 
@@ -407,7 +274,7 @@ write.csv(Pop_metrics,
 ```
 
 
-## e- SEA coordinates 
+## b- SEA coordinates 
 
 ```{r population SEAc coordinates, warning = F, message = F}
 
@@ -459,7 +326,7 @@ write.csv(Mean_position, file.path(here(), "exported_data",
 
 
 
-## f- Area of ellipses overlap
+## c- Area of ellipses overlap
 
 ```{r area of ellipses overlap: initialize vectors}
 
@@ -665,14 +532,9 @@ Mean_position <- read.csv(file.path(here(), "exported_data",
 names(Mean_position)[3] = "Code"
 Mean_position %<>% dplyr::select(-Pond, -Species) 
 Pop_metrics <- merge(Pop_metrics, Mean_position, by = "Code")
-Pop_metrics %<>% dplyr::select(Pond, Species, CRcp, NRcp, TAcp, CDcp, MNNDcp, SDNNDcp, SEAc, TPavg, D13Cavg)
+Pop_metrics %<>% dplyr::select(Pond, Species, SEAc, TPavg, D13Cavg)
 
-Pop_metrics_long <- rbind(Pop_metrics %>% dcast(Pond ~ Species, value.var = "CRcp") %>% add_column(Metrics = "CRcp"),
-      Pop_metrics %>% dcast(Pond ~ Species, value.var = "NRcp") %>% add_column(Metrics = "NRcp"),
-      Pop_metrics %>% dcast(Pond ~ Species, value.var = "TAcp") %>% add_column(Metrics = "TAcp"),
-      Pop_metrics %>% dcast(Pond ~ Species, value.var = "CDcp") %>% add_column(Metrics = "CDcp"),
-      Pop_metrics %>% dcast(Pond ~ Species, value.var = "MNNDcp") %>% add_column(Metrics = "MNNDcp"),
-      Pop_metrics %>% dcast(Pond ~ Species, value.var = "SDNNDcp") %>% add_column(Metrics = "SDNNDcp"),
+Pop_metrics_long <- rbind(
       Pop_metrics %>% dcast(Pond ~ Species, value.var = "SEAc") %>% add_column(Metrics = "SEAc"),
       Pop_metrics %>% dcast(Pond ~ Species, value.var = "TPavg") %>% add_column(Metrics = "TPavg"),
       Pop_metrics %>% dcast(Pond ~ Species, value.var = "D13Cavg") %>% add_column(Metrics = "D13Cavg"))
@@ -680,415 +542,5 @@ Pop_metrics_long <- rbind(Pop_metrics %>% dcast(Pond ~ Species, value.var = "CRc
 
 write.csv(Pop_metrics_long, file.path(here(), "exported_data", "Population_metrics_long.csv"), row.names = F)
 ```
-
-
-# 3- Calculate CD between populations and global species niche
-Calculate Layman metrics - Agile frog pop vs global
-```{r calculate Layman metrics for agile frog}
-
-# Select agile frog
-Agile_dataset <- Subset_Dataset %>% filter(Species == "Agile frog")
-
-# Create ponds
-spx <- split(Agile_dataset$D13Ccor_consoI, Agile_dataset$Pond, drop = TRUE)
-spy <- split(Agile_dataset$TP, Agile_dataset$Pond, drop = TRUE)
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
-}
-
-Layman_agile <- as.data.frame(t(Table))
-colnames(Layman_agile) <- Layman_agile[1,]
-Layman_agile <- Layman_agile[-1,]
-Layman_agile$Code <- rownames(Layman_agile)
-Layman_agile %<>% mutate(Species = "Agile frog") 
-
-```
-
-Calculate Layman metrics - Tree frog pop vs global
-```{r calculate Layman metrics for tree frog}
-
-# Select 
-Treefrog_dataset <- Subset_Dataset %>% filter(Species == "Tree frog")
-
-# Create ponds
-spx <- split(Treefrog_dataset$D13Ccor_consoI, Treefrog_dataset$Pond, drop = TRUE)
-spy <- split(Treefrog_dataset$TP, Treefrog_dataset$Pond, drop = TRUE)
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
-}
-
-Layman_treefrog <- as.data.frame(t(Table))
-colnames(Layman_treefrog) <- Layman_treefrog[1,]
-Layman_treefrog <- Layman_treefrog[-1,]
-Layman_treefrog$Code <- rownames(Layman_treefrog)
-Layman_treefrog %<>% mutate(Species = "Tree frog") 
-```
-
-Calculate Layman metrics - Palmate newt pop vs global
-```{r calculate Layman metrics for palmate newt}
-
-# Select 
-Palmate_dataset <- Subset_Dataset %>% filter(Species == "Palmate newt")
-
-# Create ponds
-spx <- split(Palmate_dataset$D13Ccor_consoI, Palmate_dataset$Pond, drop = TRUE)
-spy <- split(Palmate_dataset$TP, Palmate_dataset$Pond, drop = TRUE)
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
-}
-
-Layman_palmate <- as.data.frame(t(Table))
-colnames(Layman_palmate) <- Layman_palmate[1,]
-Layman_palmate <- Layman_palmate[-1,]
-Layman_palmate$Code <- rownames(Layman_palmate)
-Layman_palmate %<>% mutate(Species = "Palmate newt") 
-```
-
-Calculate Layman metrics - Marbled newt pop vs global
-```{r calculate CD for marbled newt}
-
-# Select
-Marbled_dataset <- Subset_Dataset %>% filter(Species == "Marbled newt")
-
-# Create ponds
-spx <- split(Marbled_dataset$D13Ccor_consoI, Marbled_dataset$Pond, drop = TRUE)
-spy <- split(Marbled_dataset$TP, Marbled_dataset$Pond, drop = TRUE)
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
-}
-
-Layman_marbled <- as.data.frame(t(Table))
-colnames(Layman_marbled) <- Layman_marbled[1,]
-Layman_marbled <- Layman_marbled[-1,]
-Layman_marbled$Code <- rownames(Layman_marbled)
-Layman_marbled %<>% mutate(Species = "Marbled newt") 
-```
-
-Calculate Layman metrics - crayfish pop vs global
-```{r calculate Layman metrics for crayfish}
-
-# Select
-Crayfish_dataset <- Subset_Dataset %>% filter(Species == "Crayfish")
-
-# Create ponds
-spx <- split(Crayfish_dataset$D13Ccor_consoI, Crayfish_dataset$Pond, drop = TRUE)
-spy <- split(Crayfish_dataset$TP, Crayfish_dataset$Pond, drop = TRUE)
-
-Table <- data.frame(metrics = c("dX_range", "dY_range", "NND", "SDNND", "CD", "TA"))
-
-for (i in 1:length(spx)) {  
-  Metrics <- laymanMetrics(spx[[i]],spy[[i]])
-  Data <- as.data.frame(Metrics$metrics)
-  Data$metrics <- rownames(Data)
-  colnames(Data)[1] <- names(spx[i])
-  Table <- merge(Table, Data, by = 'metrics', suffixes = colnames(Data)[1], all=TRUE)
-}
-
-Layman_crayfish <- as.data.frame(t(Table))
-colnames(Layman_crayfish) <- Layman_crayfish[1,]
-Layman_crayfish <- Layman_crayfish[-1,]
-Layman_crayfish$Code <- rownames(Layman_crayfish)
-Layman_crayfish %<>% mutate(Species = "Crayfish") 
-
-```
-
-
-## Bootstrapped version
-Now we calculate the equivalent using the bootstrapping method. For each pop, we sample 10 individuals in the population, calculate the 6 metrics of Layman, then do it again 999 times.
-
-Agile frog
-```{r calculate Layman metrics with bootstrapping for agile frog}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Agile_dataset$D13Ccor_consoI, 
-             Agile_dataset$Pond, drop = TRUE)
-spy <- split(Agile_dataset$TP,
-             Agile_dataset$Pond, drop = TRUE)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = length(spy)
-
-# Create empty vectors to store the results 
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(CD)<-names(spx)
-names(MNND)<-names(spx)
-names(SDNND)<-names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-}
-
-Agile_bootstrapped <- as.data.frame(cbind(
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(CD)))
-
-```
-
-Tree frog
-```{r calculate Layman metrics with bootstrapping for tree frog}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Treefrog_dataset$D13Ccor_consoI, 
-             Treefrog_dataset$Pond, drop = TRUE)
-spy <- split(Treefrog_dataset$TP,
-             Treefrog_dataset$Pond, drop = TRUE)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = length(spy)
-
-# Create empty vectors to store the results 
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(CD)<-names(spx)
-names(MNND)<-names(spx)
-names(SDNND)<-names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-}
-
-Treefrog_bootstrapped <- as.data.frame(cbind(
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(CD)))
-
-```
-
-Palmate newt
-```{r calculate Layman metrics with bootstrapping for palmate newt}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Palmate_dataset$D13Ccor_consoI, 
-             Palmate_dataset$Pond, drop = TRUE)
-spy <- split(Palmate_dataset$TP,
-             Palmate_dataset$Pond, drop = TRUE)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = length(spy)
-
-# Create empty vectors to store the results 
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(CD)<-names(spx)
-names(MNND)<-names(spx)
-names(SDNND)<-names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-}
-
-Palmate_bootstrapped <- as.data.frame(cbind(
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(CD)))
-
-```
-
-Marbled newt
-```{r calculate Layman metrics with bootstrapping for marbled newt}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Marbled_dataset$D13Ccor_consoI, 
-             Marbled_dataset$Pond, drop = TRUE)
-spy <- split(Marbled_dataset$TP,
-             Marbled_dataset$Pond, drop = TRUE)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = length(spy)
-
-# Create empty vectors to store the results 
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(CD)<-names(spx)
-names(MNND)<-names(spx)
-names(SDNND)<-names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-}
-
-Marbled_bootstrapped <- as.data.frame(cbind(
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(CD)))
-
-```
-
-Crayfish
-```{r calculate Layman metrics with bootstrapping for crayfish}
-
-# Make sure we find the same results everytime by setting the seed
-set.seed(10)
-
-# We group samples by pond and species again
-spx <- split(Crayfish_dataset$D13Ccor_consoI, 
-             Crayfish_dataset$Pond, drop = TRUE)
-spy <- split(Crayfish_dataset$TP,
-             Crayfish_dataset$Pond, drop = TRUE)
-
-# Number of bootstrapped required
-nr <- 9999 # the number of reps
-ncol = length(spy)
-
-# Create empty vectors to store the results 
-CD <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-MNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-SDNND <- data.frame(matrix(NA, ncol = ncol, nrow = nr))
-
-names(CD)<-names(spx)
-names(MNND)<-names(spx)
-names(SDNND)<-names(spx)
-
-for (j in 1:length(spx)) {
-  if (length(spx[[j]]) > 10) {
-    for (i in 1:nr) {
-      simX<-sample(spx[[j]], 10, replace = FALSE, prob = NULL)
-      simY<-sample(spy[[j]],10,replace = FALSE,prob=NULL)
-      layman <- laymanmetrics(simX, simY)
-      CD[i,j] <- layman$CD
-      MNND[i,j] <- layman$MNND
-      SDNND[i,j] <- layman$SDNND
-    }
-    }
-}
-
-Crayfish_bootstrapped <- as.data.frame(cbind(
-                                  CDb = colMeans(CD), 
-                                  MNNDb = colMeans(MNND), 
-                                  SDNNDb = colMeans(SDNND),
-                                  Code = colnames(CD)))
-
-```
-
-
-## Merge all datasets
-```{r merge CD tables to create CDcp}
-
-CD_global <- rbind(
-  merge(Layman_agile %>% dplyr::select(Code, CD, NND, SDNND, Species), 
-        Agile_bootstrapped, by = "Code"),
-  merge(Layman_treefrog %>% dplyr::select(Code, CD, NND, SDNND, Species), 
-        Treefrog_bootstrapped, by = "Code"),
-  merge(Layman_palmate %>% dplyr::select(Code, CD, NND, SDNND, Species), 
-        Palmate_bootstrapped, by = "Code"),
-  merge(Layman_marbled %>% dplyr::select(Code, CD, NND, SDNND, Species), 
-        Marbled_bootstrapped, by = "Code"),
-  merge(Layman_crayfish %>% dplyr::select(Code, CD, NND, SDNND, Species), 
-        Crayfish_bootstrapped, by = "Code")
-)
-
-#Create a composite metric to avoid NAs in bootstrapped metrics
-CD_global %<>% mutate(CDcp = CDb,
-                      MNNDcp = MNNDb,
-                      SDNNDcp = SDNNDb)
-
-
-for (i in 1:length(CD_global$CDb)) {
-  if (is.na(CD_global$CDb[i]) == TRUE) {
-    CD_global$CDcp[i] <- CD_global$CD[i]
-    CD_global$MNNDcp[i] <- CD_global$NND[i]
-    CD_global$SDNNDcp[i] <- CD_global$SDNND[i]
-  }
-}
-
-
-write.csv(CD_global, file.path(here(), "exported_data", "CD_global.csv"), 
-          row.names = F)
-```
-
 
 

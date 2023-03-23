@@ -1,8 +1,8 @@
 ---
 title: "#6: Statistical models"
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
-date: "23/09/2022"
+- Nadege Belouard^[UMR CNRS EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+date: "23/03/2023"
 output:
   pdf_document:
     toc: TRUE
@@ -47,24 +47,16 @@ library(here)
 ```{r load datasets}
 #Load datasets
 Envt <- read.csv(here::here("data_raw", "Raw_environment.csv"), h = T)
+Envt %<>% mutate(Crayfish01 = ifelse(CrayfishCPUE == 0, 0, 1))
          
 # Dataset
 Niche_metrics <- read.csv(file.path(here(), "exported_data", 
                                     "Population_metrics.csv"), h = T) %>% 
-  dplyr::select(Code, Pond, Species, 
-                # NRcp, CRcp, TAcp, CDcp, MNNDcp, SDNNDcp, 
-                SEAc)
+  dplyr::select(Code, Pond, Species, SEAc)
 
 Mean_position <- read.csv(file.path(here(), "exported_data", 
                                     "Meanposition_SEAc.csv"), header = T)
 names(Mean_position)[3] <- "Code"
-
-
-# CD_global <- read.csv(file.path(here(), "exported_data", "CD_global.csv"), h = T)
-# CD_global %<>% dplyr::select(Code, Species, CDcp)
-# CD_global %<>% rename(Pond = Code,
-#                       CDg = CDcp)
-
 ```
 
 ```{r merge datasets}
@@ -87,9 +79,6 @@ for (i in 1:length(Pop_metrics$Pond)) {
   }
 }
 
-#Add the variable Tadpoles
-# Candidate <- Envt %>% mutate(Tadpoles = Agile_frog+Tree_frog)
-
 #Create a dataset only for amphibian populations
 Pop_amphib <- Pop_metrics %>% filter(Clade == "Amphibians")
 
@@ -100,208 +89,11 @@ dim(Pop_dataset)[1] == 41
 
 ```
 
-# Metrics correlation
-
-First, we test the correlation between metrics, in order to determine whether some of them are irrelevant to test.
-
-```{r compare metrics}
-
-Metrics <- merge(CD_global,
-                     Pop_amphib) %>% 
-  dplyr::select(-Pond, -Species, -Code, -Group, -Clade) 
-
-# Compute the correlations between niche netrics
-Metrics_cor <- rcorr(as.matrix(Metrics), type = "spearman")
-# All metrics are extremely correlated except with NR (max = 0.50)
-
-
-library(Hmisc)
-rcorr(as.matrix(Envt[3:10]), type = "spearman")
-cor.test(Envt$Agile_frog, Envt$Tree_frog, method = "spearman")
-# >0.8: TMAR/CR
-```
-
-The six metrics of Layman are all highly correlated, except CR and NR (r = 0.08, p > 0.5). It means that there is a close relationship between niche core size, niche total size, and distance between individuals, but a lower correlation between the number of trophic levels encompassed and the breadth of resources used.
 
 
 # 2. Models: variation in amphibian niche metrics
 
 For each metric tested, we (1) check GOF of a simple model, and transform the metric if necessary, (2) run the model selection and (3) plot the figure corresponding to the selected models.
-
-
-### CR
-
-```{r check GOF for CR}
-mod1 <- lmer(CRcp ~ scale(Canopycover) + (1|Species), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod1)
-
-```
-Residuals do not look ok, there are 2 or 3 outliers. We try to log-transform CR to obtain normal residuals.
-
-
-```{r check GOF for log-transformed CR}
-#Transform metric to obtain normal residuals
-mod2 <- lmer(log(CRcp) ~ scale(Canopycover) + (1|Species), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod2)
-
-```
-
-Residuals are better after CR is log-transformed, even though they are still not completely normal. We proceed with the transformed CR and will have a look at residuals of selected models.
-
-```{r dredge CR model}
-#Test variables
-mod_CR <- lmer(log(CRcp) ~ 
-                 scale(Area) + scale(Canopycover) + scale(Aq_VegCover) +
-                 scale(CrayfishCPUE) +
-                 scale(Agile_frog) + scale(Tree_frog) + scale(Palmate_newt) + 
-                 scale(Marbled_newtCPUE) + 
-                 (1|Species), na.action="na.fail", data=Pop_dataset)
-
-# summary(mod_CR)
-CR_dredge <- dredge(mod_CR, rank=AICc, m.lim=c(0,2), extra="R^2")
-CR_select <- subset(CR_dredge, delta < 2)
-CR_select
-
-```
-
-Two models are retained in deltaAIC < 2. 
-
-```{r check the content of each model for CR}
-# Check the content of each model selected
-CR_list <- dredge(mod_CR, rank=AICc, m.lim=c(0,2), extra="R^2", evaluate=FALSE)
-length(CR_list)
-
-CR_list$'34' #agile frog, marbled newt
-Model_selected2 <- lmer(log(CRcp) ~ scale(Agile_frog) + scale(Marbled_newtCPUE) + 
-                          (1|Species),
-             na.action="na.fail", data=Pop_dataset)
-plotresid(Model_selected2)
-res <- summary(Model_selected2)
-round(res$coefficients,2)
-Anova(Model_selected2)
-
-CR_list$'10' # agile frog, canopy cover
-Model_selected1 <- lmer(log(CRcp) ~ scale(Agile_frog) + scale(Canopycover) + 
-                          (1|Species),
-             na.action="na.fail", data=Pop_dataset)
-plotresid(Model_selected1)
-res <- summary(Model_selected1)
-round(res$coefficients,2)
-Anova(Model_selected1)
-```
-
-### Figure 3: significant variables for CR
-```{r corresponding figures for CR}
-
-Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
-                                                    "Agile frog",
-                                                    "Tree frog",
-                                                    "Palmate newt",
-                                                    "Marbled newt"))
-
-
-CR_agile <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Agile_frog), 
-                                    group = Species)) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
-  geom_point(aes(col = Species), size = 2) +
-  xlab("Agile frog density, scaled") +
-  ylab("log(CRcp)") +
-  scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  theme_classic() +
-  theme(legend.position="none")
-
-
-CR_marbre <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Marbled_newtCPUE), 
-                                     group = Species)) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
-  geom_point(aes(col = Species), size = 2) +
-  scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab("Marbled newt abundance, scaled") +
-  ylab("log(CRcp)") +
-  theme_classic() +
-  theme(legend.position="none")
-
-
-CR_canopy <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(Canopycover), 
-                                     group = Species)) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
-  geom_point(aes(col = Species), size = 2) +
-  scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab("Canopy cover, scaled") +
-  ylab("log(CRcp)") +
-  theme_classic() +
-  theme(legend.position="none")
-
-
-CR_crayfish <- ggplot(Pop_dataset, aes(y = log(CRcp), x = scale(CrayfishCPUE), 
-                                       group = Species)) +
-  geom_point(aes(col = Species), size = 2) +
-  scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab("Crayfish abundance, scaled") +
-  ylab("log(CRcp)") +
-  theme_classic() +
-  theme(legend.position="none")
-
-
-g <- grid.arrange(CR_agile, CR_marbre, CR_canopy, CR_crayfish, ncol = 2)
-g
-ggsave(file.path(here(), "figures", "CRcp.jpg"), g, width = 6, height = 6)
-
-``` 
-
-
-
-### NR
-
-Next, we analyze NR.
-
-```{r check GOF for NR}
-
-#Check residuals
-mod1<-lmer(NRcp ~ scale(Canopycover) + (1|Species), na.action="na.fail", 
-           data=Pop_dataset)
-plotresid(mod1)
-```
-
-The model has singularities. Residuals appear correct but can be improved.
-
-```{r check GOF for log-transformed NR}
-#Transform metric
-mod2<-lmer(log(NRcp) ~ scale(Canopycover) + (1|Species), na.action="na.fail", 
-           data=Pop_dataset)
-plotresid(mod2)
-```
-Residuals are not really improved by the transformation. We can transform the metric or keep it untransformed.
-
-
-```{r dredge NR model}
-
-mod_NR<-lmer(log(NRcp) ~ scale(Area) + scale(Canopycover) + scale(Aq_VegCover) +
-               scale(CrayfishCPUE) +
-               scale(Agile_frog) + scale(Tree_frog) + scale(Palmate_newt) + 
-               scale(Marbled_newtCPUE) +
-               scale(Tadpoles) + (1|Species), na.action="na.fail", 
-             data=Pop_dataset)
-NR_dredge <- dredge(mod_NR, rank=AICc, m.lim=c(0,2), extra="R^2")
-NR_select <- subset(NR_dredge, delta<2)
-NR_select
-
-mod_NR<-lmer(log(NRcp) ~ 1 + (1|Species), na.action="na.fail", 
-             data=Pop_dataset)
-res <- summary(mod_NR)
-round(res$coefficients,2)
-Anova(mod_NR)
-```
-
-Only the null is retained within deltaAIC < 2.
-
-
 
 ### SEAc
 
@@ -309,7 +101,7 @@ Only the null is retained within deltaAIC < 2.
 mod1 <- lmer(SEAc ~ scale(Canopycover)+ (1|Species), 
              na.action = "na.fail", data = Pop_dataset)
 plotresid(mod1)
-
+summary(mod1)
 
 mod1 <- lm(SEAc ~ scale(Canopycover), 
              na.action = "na.fail", data = Pop_dataset)
@@ -318,13 +110,10 @@ plotresid(mod1)
 ```
 
 Residuals are not ok, SEAc must be transformed.
+The random species effect has a very low variance and must be discarded
 
 ```{r check GOF for log-transformed SEAc, include=FALSE}
 
-mod2 <- lmer(log(SEAc) ~ scale(Canopycover) + (1|Species),
-             na.action = "na.fail", data = Pop_dataset)
-plotresid(mod2)
- 
 mod2 <- lm(log(SEAc) ~ scale(Canopycover),
              na.action = "na.fail", data = Pop_dataset)
 plotresid(mod2)
@@ -335,37 +124,11 @@ Residuals are greatly improved, we go with the transformed SEAc.
 ```{r dredge SEAc model, include=FALSE}
 
 # Test effect of candidate variables
-mod_SEA <- lmer(log(SEAc) ~ scale(Area) + 
-                  scale(Canopycover) + 
-                  scale(Aq_VegCover) +
-                  scale(CrayfishCPUE) +
-                  scale(Agile_frog) + 
-                  scale(Tree_frog) + 
-                  scale(Palmate_newt) + 
-                  scale(Marbled_newtCPUE) +
-                  # Group +
-                  (1|Species), 
-                na.action = "na.fail", 
-                data = Pop_dataset)
-
-SEA_dredge <- dredge(mod_SEA, rank = AICc, m.lim = c(0,2), extra="R^2")
-# update(SEA_dredge[[1]], formula., evaluate = T)
-
-SEA_select <- subset(SEA_dredge, delta < 2)
-SEA_select
-
-avg.SEAc <- model.avg(SEA_select)
-print(avg.SEAc)
-summary(avg.SEAc)
-
-
-
-
-# Test effect of candidate variables
 mod_SEA <- lm(log(SEAc) ~ scale(Area) + 
                   scale(Canopycover) + 
                   scale(Aq_VegCover) +
                   scale(CrayfishCPUE) +
+                as.factor(Crayfish01) +
                   scale(Agile_frog) + 
                   scale(Tree_frog) + 
                   scale(Palmate_newt) + 
@@ -374,9 +137,13 @@ mod_SEA <- lm(log(SEAc) ~ scale(Area) +
                 na.action = "na.fail", 
                 data = Pop_dataset)
 
-SEA_dredge <- dredge(mod_SEA, rank = AICc, m.lim = c(0, 2), extra="R^2")
+SEA_dredge <- dredge(mod_SEA,
+                     rank = AICc, m.lim = c(0, 2), extra="R^2")
 SEA_select <- subset(SEA_dredge, delta < 2)
 SEA_select
+
+write.csv(SEA_dredge, file.path(here(), "exported_data", 
+                             "SEAc_selection.csv"), row.names = F)
 
 ```
 
@@ -409,17 +176,36 @@ res <- summary(Model_selected1)
 round(res$coefficients,2)
 Anova(Model_selected1)
 
+
+
+SEA_dredge$'6'
+Model_selected1 <- lm(log(SEAc) ~ scale(Agile_frog) +
+                          as.factor(Crayfish01),
+             na.action="na.fail", data = Pop_dataset)
+plotresid(Model_selected1)
+
+# summary(Model_selected1)
+res <- summary(Model_selected1)
+round(res$coefficients,2)
+Anova(Model_selected1)
 ```
 
- 
+# Figure SEAc
 ```{r corresponding figures for SEAc, include=FALSE}
 
 library(cowplot)
 
+Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
+                                                    "Agile frog",
+                                                    "Tree frog",
+                                                    "Palmate newt",
+                                                    "Marbled newt"))
+
 SEAc_marbre <- ggplot(Pop_dataset, aes(y = log(SEAc), 
-                                       x = scale(Marbled_newtCPUE), 
-                                       group = Species)) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
+                                       x = scale(Marbled_newtCPUE)
+                                       # , group = Species
+                                       )) +
+  geom_smooth(method="lm",se=F, col = "black") +
     geom_point(aes(col = Species), size = 2, show.legend = F) +
     scale_color_manual(values = c("#0072B2", "#009E73", 
                                 "#56B4E9", "#CC79A7")) +
@@ -431,53 +217,47 @@ SEAc_marbre <- ggplot(Pop_dataset, aes(y = log(SEAc),
 SEAc_marbre
 
 
-# SEAc_agile <- ggplot(Pop_dataset, 
-#                      aes(y = log(SEAc), 
-#                          x = scale(Agile_frog), 
-#                          group = Species)) + 
-#   geom_smooth(method="lm",se=F, aes(col = Species)) +
-#     geom_point(aes(col = Species), size = 2, show.legend = F) +
-#     # scale_color_manual(values = palette) +
-#   xlab("Agile frog density, scaled") +
-#   ylab("log(SEAc)") +
-#   theme_classic() +
-#   theme(legend.position="none")
-# 
-# SEAc_agile
+SEAc_agile <- ggplot(Pop_dataset,
+                     aes(y = log(SEAc),
+                         x = scale(Agile_frog)
+                         # , group = Species
+                         )) +
+  geom_smooth(method="lm",se=F, col = "black") +
+    geom_point(aes(col = Species), size = 2, show.legend = F) +
+    scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Agile frog density, scaled") +
+  ylab(NULL) +
+  theme_classic() +
+  theme(legend.position="none")
 
+SEAc_agile
+
+
+Pop_dataset %<>% mutate(Crayfish01 = dplyr::recode(Crayfish01, 
+                                          "1" = "present",
+                                          "0" = "absent"))
 SEAc_crayfish <- ggplot(Pop_dataset, 
              aes(y = log(SEAc), 
-                 x = scale(CrayfishCPUE), 
-                 group = Species)) +
-  geom_point(aes(col = Species), size = 2, show.legend = F) +
+                 x = as.factor(Crayfish01)
+                 # , group = Species
+                 )) +
+  geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
   scale_color_manual(values = c("#0072B2", "#009E73", 
                                 "#56B4E9", "#CC79A7")) +
-    xlab("Crayfish abundance, scaled") +
-  ylab("log(SEAc)") +
+    xlab("Crayfish") +
+  ylab(NULL) +
   theme_classic() +
   theme(legend.position="none")
 
 SEAc_crayfish
 
-# g4 <- ggplot(Pop_dataset, aes(y = log(SEAc), x = scale(Agile_frog))) + 
-#   geom_point(aes(col = Species)) +
-#   scale_fill_discrete(palette = "Set1") +
-#   scale_color_hue(labels = c("Agile frog", "Tree frog", "Marbled newt", "Palmate newt"))+
-#   theme_classic()
-# g4leg <- get_legend(g4)
 
-
-g <- grid.arrange(SEAc_marbre, SEAc_crayfish, ncol = 2)
-g
- 
-# ggsave("../figures/SEAc.jpg", g, width = 10, height = 3)
-
- 
+SEAc <- grid.arrange(SEAc_marbre, SEAc_agile, SEAc_crayfish, ncol = 3)
 ```
 
 
-## C. Variation in amphibian niche position
- 
 ### Mean TP
 
 ```{r check GOF for mean TP, include=FALSE}
@@ -492,42 +272,14 @@ plotresid(mod1) #residuals ok
 
 ```
 
+Again, very low variance for the random effect species, so we remove it.
  
-```{r check GOF for mean TP transformed, include=FALSE}
-
-# Check residuals
-
-mod1 <- lmer(log(TPavg) ~ scale(Canopycover) + (1|Species), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod1) #residuals ok
-
-mod1 <- lm(log(TPavg) ~ scale(Canopycover), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod1) #residuals ok
-
-```
-
 ```{r dredge TP model, include=FALSE}
 
 # Test effect of candidate variables
-
-mod_TP <- lmer(TPavg ~ scale(Area) + scale(Canopycover) + 
-                 scale(Aq_VegCover) +
-                 scale(CrayfishCPUE) + scale(Agile_frog) + 
-                 scale(Tree_frog) + scale(Palmate_newt) +
-                 scale(Marbled_newtCPUE) +
-                 # Group +
-                 (1|Species), 
-               na.action="na.fail", data=Pop_dataset)
-
-TP_dredge <- dredge(mod_TP, rank = AICc, m.lim = c(0,2), extra="R^2")
-subset(TP_dredge, delta < 2)
-
-
-
 mod_TP <- lm(TPavg ~ scale(Area) + scale(Canopycover) + 
                  scale(Aq_VegCover) +
-                 scale(CrayfishCPUE) + scale(Agile_frog) + 
+                 scale(CrayfishCPUE) + as.factor(Crayfish01) + scale(Agile_frog) + 
                  scale(Tree_frog) + scale(Palmate_newt) +
                  scale(Marbled_newtCPUE) +
                  Group, 
@@ -536,7 +288,8 @@ mod_TP <- lm(TPavg ~ scale(Area) + scale(Canopycover) +
 TP_dredge <- dredge(mod_TP, rank = AICc, m.lim = c(0,2), extra="R^2")
 subset(TP_dredge, delta < 2)
 
-
+write.csv(TP_dredge, file.path(here(), "exported_data", 
+                             "TP_selection.csv"), row.names = F)
 ```
 
  
@@ -563,23 +316,62 @@ res <- summary(Model_selected1)
 round(res$coefficients,2)
 
 
+Model_selected1 <- lm(TPavg ~ as.factor(Crayfish01) + Group, 
+                        na.action="na.fail", 
+                        data=Pop_dataset)
+plotresid(Model_selected1)
+summary(Model_selected1)
+res <- summary(Model_selected1)
+round(res$coefficients,2)
+
 ```
 
  
 ```{r corresponding figures for TP, include=FALSE}
 
-g7 <- ggplot(Pop_dataset, aes(y = TPavg, x = scale(Canopycover),
-                              group = Species)) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
-    geom_point(aes(col = Species), size = 2, show.legend = F) +
-    # scale_color_manual(values = palette) +
+TP_canopy <- ggplot(Pop_dataset, aes(y = TPavg, x = scale(Canopycover))) +
+  geom_smooth(method="lm",se=F, col = "black") +
+    geom_point(aes(col = Species), size = 2) +
+    scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
   xlab("Canopy cover, scaled") +
-  ylab("TP") +
-  theme_classic() #+
+  ylab(NULL) +
+  theme_classic() + 
   theme(legend.position="none")
 
-# ggsave("../figures/TPavg.jpg", g7, width = 5, height = 3)
+  TP_canopy
 
+  
+  TP_crayfish <- ggplot(Pop_dataset, aes(y = TPavg, x = as.factor(Crayfish01))) +
+    geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
+    scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Crayfish") +
+      ylab(NULL) +
+  theme_classic() +
+  theme(legend.position="none")
+
+  TP_crayfish
+
+
+Pop_dataset$Group <- factor(Pop_dataset$Group, levels = c("Tadpoles", "Newts")) 
+  
+    TP_group <- ggplot(Pop_dataset, aes(y = TPavg, x = Group)) +
+  geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
+scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Group") +
+  ylab("Mean TP") + 
+  theme_classic() +
+  theme(legend.position="none")
+
+  TP_group
+
+  
+TP <- grid.arrange(TP_group, TP_canopy, TP_crayfish, ncol = 3)
+  
 ```
 
  
@@ -599,48 +391,14 @@ mod1 <- lm(D13Cavg ~ scale(Palmate_newt) + Group,
 plotresid(mod1) #residuals ok
 ```
 
-```{r check GOF for D13C, include=FALSE}
- 
-# Check residuals
+The random effect species is again very low, we remove it.
 
-smallnb = 1 - min(Pop_dataset$D13Cavg)
-
-mod1 <- lmer(log(D13Cavg+smallnb) ~ scale(Canopycover) + (1|Species), 
-             na.action="na.fail", data=Pop_dataset)
-
-plotresid(mod1) #residuals not really ok
-
-
-mod1 <- lm(log(D13Cavg+smallnb) ~ scale(Canopycover), 
-             na.action="na.fail", data=Pop_dataset)
-plotresid(mod1) #residuals ok
-```
-
-
- 
 ```{r dredge D13C model, include=FALSE}
  
 # Test effect of candidate variables
- 
-mod_D13C <- lmer(D13Cavg ~ scale(Area) + scale(Canopycover) + 
-                   scale(Aq_VegCover) +
-                   scale(CrayfishCPUE) +
-                   scale(Agile_frog) + scale(Tree_frog) + 
-                   scale(Palmate_newt) + scale(Marbled_newtCPUE) +
-                   # Group +
-                   (1|Species), 
-                 na.action="na.fail", data=Pop_dataset)
-
-D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2")
-
-subset(D13C_dredge, delta < 2)
-
-
-
-
 mod_D13C <- lm(D13Cavg ~ scale(Area) + scale(Canopycover) + 
                    scale(Aq_VegCover) +
-                   scale(CrayfishCPUE) +
+                   scale(CrayfishCPUE) + as.factor(Crayfish01) +
                    scale(Agile_frog) + scale(Tree_frog) + 
                    scale(Palmate_newt) + scale(Marbled_newtCPUE) +
                    Group, 
@@ -649,19 +407,15 @@ mod_D13C <- lm(D13Cavg ~ scale(Area) + scale(Canopycover) +
 D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2")
 subset(D13C_dredge, delta < 2)
 
+write.csv(D13C_dredge, file.path(here(), "exported_data", 
+                             "D13C_selection.csv"), row.names = F)
+
 ```
 
  
 ```{r check the content of each model for D13C, include=FALSE}
 
 D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2", evaluate=FALSE)
-
-# D13C_dredge$'258'
-# Model_selected1 <- lmer(D13Cavg ~ Group + scale(Palmate_newt) + (1|Taxa), na.action="na.fail", data=Pop_dataset)
-# plotresid(Model_selected1)
-# summary(Model_selected1)
-# res <- summary(Model_selected1)
-# round(res$coefficients,2)
 
 D13C_dredge$'130'
 Model_selected1 <- lm(D13Cavg ~ scale(Palmate_newt) + Group, 
@@ -679,18 +433,87 @@ plotresid(Model_selected1)
 summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
+
+
+Model_selected1 <- lm(D13Cavg ~ as.factor(Crayfish01) + Group, 
+                      na.action="na.fail", data=Pop_dataset)
+plotresid(Model_selected1)
+summary(Model_selected1)
+res <- summary(Model_selected1)
+round(res$coefficients,2)
 ```
 
  
 ```{r corresponding figures for D13C, include=FALSE}
 
-g1 <- ggplot(Pop_dataset, aes(y = log(D13Cavg+smallnb), 
+D13C_group <- ggplot(Pop_dataset, aes(y = D13Cavg, x = Group)) +
+  geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
+scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Group") +
+  ylab(bquote('Mean '*delta^13~C["cor"]*'')) +
+  theme_classic() +
+  theme(legend.position="none")
+D13C_group
+
+
+D13C_palmate <- ggplot(Pop_dataset, aes(y = D13Cavg, 
                               x = scale(Palmate_newt))) +
-  geom_point(aes(col = Species), show.legend = F) +
-  geom_smooth(method="lm",se=F, aes(col = Species)) +
-  scale_fill_discrete(palette = "Set1") +
-  scale_color_hue(labels = c("Agile frog", "Tree frog", "Marbled newt", "Palmate newt"))+
+  geom_point(aes(col = Species), size = 2, show.legend = F) +
+  geom_smooth(method="lm",se=F, col = "black") +
+scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+    ylab(NULL) +
+  xlab("Palmate newt abundance, scaled") +
   theme_classic()
-g1
- 
+D13C_palmate
+
+
+D13C_crayfish <- ggplot(Pop_dataset, aes(y = D13Cavg, 
+                              x = as.factor(Crayfish01))) +
+  geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2, show.legend = F) +
+scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+    ylab(NULL) +
+  xlab("Crayfish") +
+  theme_classic()
+D13C_crayfish
+
+D13C <- grid.arrange(D13C_group, D13C_palmate, D13C_crayfish, ncol = 3)
+
 ```
+
+
+### Figure 3
+```{r figure 3}
+
+# Get the legend
+legend <- ggplot(Pop_dataset, aes(y = D13Cavg, 
+                              x = as.factor(Crayfish01))) +
+  geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
+scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+    ylab(NULL) +
+  xlab("Crayfish") +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+library(cowplot)
+get_legend(legend)
+
+g <- ggdraw() +
+  draw_plot(SEAc, x = 0, y = 0.7, width = 1, height = 0.3) +
+  draw_plot(TP, 0, 0.4, 1, .3) +
+  draw_plot(D13C, 0, 0.1, 1, 0.3) +
+  draw_plot(get_legend(legend), 0, 0, 1, 0.1) +
+  draw_plot_label(c("A", "B", "C"), 
+                  c(0, 0, 0), 
+                  c(1, 0.7, 0.4))
+
+ggsave("./figures/Figure3c.jpg", g, width = 8, height = 8)
+```
+
+

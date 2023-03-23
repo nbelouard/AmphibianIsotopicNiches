@@ -1,8 +1,8 @@
 ---
 title: "#4: Network plots with ellipses"
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
-date: "23/09/2022"
+- Nadege Belouard^[UMR CNRS EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+date: "23/03/2023"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -81,23 +81,6 @@ ggsave(species_ellipses, filename = file.path(here(), "figures",
        height = 3.5, width = 5)
 ```
 
-## Figure with ellipses only
-```{r plot network with ellipses per species, no points}
-species_ellipses <- ggplot() +
-  geom_path(data = M_coord, aes(coordX, coordY, col = Species), lwd = 1.5) +
-  scale_color_manual(values = c("#0072B2", "#E69F00",
-                                          "#CC79A7", "#56B4E9", 
-                                          "#009E73")) +
-  xlab("D13Ccor") +
-  ylab("Trophic position") +
-  guides(col = guide_legend("Species")) +
-  theme_classic()
-
-ggsave(species_ellipses, filename = file.path(here(), "figures", "ellipses_species_wopoints.jpg"), height = 4, width = 6)
-
-```
-
-
 
 # Plots with ellipses per population per pond
 
@@ -111,88 +94,58 @@ M_ind$Species <- factor(M_ind$Species, levels = c("Crayfish",
                                                     "Marbled newt"))
 
 # Set limits for x values
-blank_data <- data.frame(Pond_code = c("U01", "U01", 
-                                   "U02", "U02", 
-                                   "U03", "U03",
-                                   "U04", "U04",
-                                   "U05", "U05",
-                                   "U06", "U06",
-                                   "I01", "I01",
-                                   "I02", "I02",
-                                   #"I03", "I03",
-                                   "I04", "I04",
-                                   "I05", "I05",
-                                   "I06", "I06",
-                                   "I07", "I07",
-                                   "I08", "I08",
-                                   "I09", "I09",
-                                   "I10", "I10",
-                                   "I11", "I11",
-                                   "I12", "I12",
-                                   "I13", "I13"#,
-                                   #"I14", "I14"
+blank_data <- data.frame(Pond = c("P01", "P01",
+                                   "P02", "P02",
+                                   "P03", "P03",
+                                   "P04", "P04",
+                                   "P05", "P05",
+                                   "P06", "P06",
+                                   "P07", "P07",
+                                   "P08", "P08",
+                                   "P09", "P09",
+                                   "P10", "P10",
+                                   "P11", "P11",
+                                   "P12", "P12",
+                                   "P13", "P13",
+                                   "P14", "P14",
+                                  "P15", "P15",
+                                   "P16", "P16",
+                                   "P17", "P17",
+                                   "P18", "P18"
                                    ),
                          y = 1,
-                         x = c(-1.5, 1.5, 
-                               -2, 1.5, 
-                               -4, 1.5,
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               #-1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
-                               -1.5, 1.5, 
+                         x = c(-1.5, 1.5,
                                -1.5, 1.5,
-                               -1.5, 1.5#,
-                               #-1.5, 1.5
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -4, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -2, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5
                                ))
-
-blank_data$Pond_code <- factor(blank_data$Pond_code, 
-                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
-                                          "I01", "I02", #"I3", 
-                                          "I04", "I05", "I06",
-                                          "I07", "I08", "I09", "I10", "I11", "I12",
-                                          "I13"#, "I14"
-                                          ))
-
-M_ind$Pond_code <- factor(M_ind$Pond, 
-                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
-                                          "I01", "I02", #"I3", 
-                                          "I04", "I05", "I06",
-                                          "I07", "I08", "I09", "I10", "I11", "I12",
-                                          "I13"#, "I14"
-                                          ))
-
-
-CoordSEAc_pop$Pond_code <- factor(CoordSEAc_pop$Pond, 
-                               levels = c("U01", "U02", "U03", "U04", "U05", "U06",
-                                          "I01", "I02", #"I3", 
-                                          "I04", "I05", "I06",
-                                          "I07", "I08", "I09", "I10", "I11", "I12",
-                                          "I13"#, "I14"
-                                          ))
-
-# Facet wrap ellipses and points
-# Dataset_target <- Dataset %>% filter(!TaxaUsed == "Other")
 
 ellipses_pop <- ggplot(data = M_ind, aes(D13Ccor_consoI, TP)) +
   theme_classic() +
   geom_point(aes(col = Species), alpha = 0.7) +
-  # geom_blank(data = blank_data, aes(x = x, y = y)) +
-  # geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species),
-            # size=1, linetype=1) +
-  scale_color_manual(values = c("#E69F00", 
-                                "#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  facet_wrap(~Pond_name, scales = "free_x", 
+  geom_blank(data = blank_data, aes(x = x, y = y)) +
+  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species),
+            size=1, linetype=1) +
+  scale_color_manual(values = c("#E69F00", #orange 
+                                "#0072B2", #darkblue 
+                                "#009E73", #green 
+                                "#56B4E9", # lightblue
+                                "#CC79A7")) + #pink
+  facet_wrap(~Pond, scales = "free_x", 
              ncol = 3) +
   xlab(bquote(''*delta^13~C["cor"]*'')) +
   ylab("Trophic position") +
@@ -205,22 +158,4 @@ ggsave(ellipses_pop, filename = file.path(here(), "figures",
                                           "ellipses_pop_points_portrait.jpg"),
        width = 10, height = 15)
 
-```
-
-## Figure with ellipses only
-```{r plot ellipses per population only}
-ellipses_pop <- ggplot() +
-  theme_classic() +
-  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species), 
-            size=2, linetype=1) +
-  scale_color_manual(values = c("#0072B2", "#E69F00",
-                                          "#CC79A7", "#56B4E9", 
-                                          "#009E73")) +
-  facet_wrap(~Pond, scales = "free_x") +
-  xlab(bquote(''*delta^13~C["cor"]*'')) +
-  ylab("Trophic position")
-
-ggsave(ellipses_pop, filename = file.path(here(), "figures", 
-                                          "ellipses_pop.jpg"), 
-       width = 15, height = 10)
 ```

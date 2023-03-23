@@ -1,12 +1,12 @@
 ---
 title: '#1: Isotope data standardization'
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR INRAE DECOD, nadege.belouard@gmail.com]
-date: "23/09/2022"
+- Nadege Belouard^[UMR EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+date: "23/03/2023"
 output:
-  pdf_document:
-    toc: yes
   html_document:
+    toc: yes
+  pdf_document:
     toc: yes
 editor_options: 
   chunk_output_type: console
@@ -21,11 +21,13 @@ library(knitr)
 library(tidyr)
 library(magrittr)
 library(here)
+
+
 ```
 
 We load the raw dataset and have a look at it.
 
-```{r load data}
+```{r load data, echo = FALSE}
 Dataset <- read.csv(file.path(here(), "data_raw", "Raw_data.csv"), header=T)
 Dataset %>% head() %>% kable()
 ```
@@ -134,15 +136,11 @@ kable(x)
 ```
 
 For each pond, there are 2 to 6 points for clams (0 to 3) and physa (0 to 3). 
-Two ponds do not have clams nor physa. So for pond K we use zooplancton (3) and gammares (3), and for pond 949 we use zooplancton (1). We calculate the average D15N of the mean primary consumers and add it to the dataset.
+We calculate the average D15N of the mean primary consumers and add it to the dataset.
 
 ``` {r calculate the baseline D15N, message = F, warning = F}
 MeanBaselineN <- Dataset %>%
-  dplyr::filter(Taxa %in% c("Corbiculidae", "Physa"#, 
-                            #"Zooplankton", "Gammarus",
-                            #"Corixidae"
-                            #,"Asellus"
-                            )) %>%
+  dplyr::filter(Taxa %in% c("Corbiculidae", "Physa")) %>%
   group_by(Pond, Taxa)%>%
   summarise(meanD15N = mean(D15N_Mu)) %>%
   group_by(Pond) %>%
