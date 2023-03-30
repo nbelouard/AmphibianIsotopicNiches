@@ -6,7 +6,7 @@ date: "23/09/2022"
 output: html_document
 ---
 
-The siar package has been archived and needs to be downloaded from its archive by executing the following chunck of code.
+The siar package has been archived and needs to be downloaded from its archive by executing the following chunk of code.
 
 ```{r setup, message = F, warning = F}
 library(here)

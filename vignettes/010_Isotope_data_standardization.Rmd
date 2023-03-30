@@ -12,8 +12,9 @@ editor_options:
   chunk_output_type: console
 ---
 
-The purpose of this first vignette is to complete isotopic data transformation from raw data to standardized data to be used in isotopic niche calculations.
+The purpose of this first vignette is to complete the stable isotope data transformation from raw data to standardized data to be used in stable isotope niche calculations. Data standardization will allow comparison between different ecosystems.
 
+First, we load the packages that we are going to use for this vignette.
 ```{r setup, warning = F, message = F}
 library(dplyr)
 library(ggplot2)
@@ -21,20 +22,32 @@ library(knitr)
 library(tidyr)
 library(magrittr)
 library(here)
-
-
 ```
 
-We load the raw dataset and have a look at it.
-
-```{r load data, echo = FALSE}
+We then load the raw dataset and have a look at it.
+```{r load data}
 Dataset <- read.csv(file.path(here(), "data_raw", "Raw_data.csv"), header=T)
 Dataset %>% head() %>% kable()
 ```
 
-The dataset contains the name of the pond, sample details, isotopic signatures in the columns "D15N" and "D13C", and the C/N ratio in the last column.
+The dataset contains the pond code, sample taxa (species x life stage), species and group (amphibians, crayfish, baseline consumers), sample ID and weight, and finally stable isotope values in the columns "D15N" and "D13C", with the C/N ratio in the last column.
 
 
+We generate a few useful tables:
+Detail of the number of samples per taxa per pond
+```{r number of samples}
+table(Dataset$Pond, Dataset$Taxa)
+```
+
+
+Calculate the mean sample weight per taxa
+```{r sample weights}
+Dataset %>%
+  group_by(Group) %>%
+  summarise(meanweight = round(mean(Weight*1000),0), 
+            sdweight = round(sd(Weight*1000),0)) %>% 
+  kable()
+```
 
 
 # A- Data wrangling
@@ -52,11 +65,10 @@ Dataset %>%
   kable()
 ```
 
-Since many of them have C/N higher than 3.5, we need to correct the D13C for high lipid content for all groups, except primary producers. We use the equation of Post, 2007. The lipid-free D13C is saved in a new column named "D13C_LF".
+Since many of them have C/N higher than 3.5, we need to correct the D13C for high lipid content for all groups. We use the equation of Post, 2007. The lipid-free D13C is saved in a new column named "D13C_LF".
 
 ```{r correct D13C for high lipid content using Post equation}
 
-# Simple calculation when dataset is only made of consumers + amphibians
 Dataset %<>% mutate(D13C_LF = D13C - 3.32 + 0.99 * C.N)
 ```
 
@@ -74,15 +86,15 @@ Corrected D13C are above the y = x line, so it looks ok.
 
 ## 2- Correction of amphibian fin values for muscle values
 
-In order to reduce sampling invasibility and in accordance with institutional ethics, we sampled amphibian fins instead of muscle, and need to correct values according to equations published in Bélouard et al. (2018);
+In accordance with institutional ethics, we sampled amphibian fins instead of muscle, and need to correct values according to equations published in Bélouard et al. (2018);
 
-Equations to correct the $D^{13}C$ values are:  
+The equations used to correct the $D^{13}C$ values are:  
 For the agile frog: $D^{13}C_{muscle} = 0.85 \times D^{13}C_{fin} - 5.50$  
 For the European tree frog:	$D^{13}C_{muscle} = 0.87 \times D^{13}C_{fin} - 4.80$  
 For the marbled newt: $D^{13}C_{muscle} = 0.70 \times D^{13}C_{fin} - 7.43$  
 For the palmate newt:	$D^{13}C_{muscle} = 0.71 \times D^{13}C_{fin} - 7.03$  
   
-Equations to correct the $D^{15}N$ values are:  
+The equations used to correct the $D^{15}N$ values are:  
 For the agile frog: $D^{15}N_{muscle} = 0.86 \times D^{15}N_{fin} + 0.97$  
 For the European tree frog: $D^{15}N_{muscle} = 1.04 \times D^{15}N_{fin} + 0.67$  
 For the marbled newt: $D^{15}N_{muscle} = 1.01 \times D^{15}N_{fin} - 0.48$  
@@ -118,10 +130,7 @@ for (i in 1:dim(Dataset)[1]) {
 
 # B - Data standardization
 
-
-## 1- Trophic position
-
-We need primary consumers to serve as a baseline to standardize the N isotopic value of samples into a variable called "trophic position" (TP). Candidate taxa are: clams, physa, and zooplankton or gammares as an alternative.
+We need primary consumers to serve as a baseline to standardize the isotopic values. Candidate taxa are: clams (Corbiculidae), Physa, Gammarus,  Corixidae, Asellus, and zooplankton. Here are the sample sizes for each pond.
 
 ``` {r candidate primary consumers for each pond, message = F, warning = F}
 
@@ -135,8 +144,9 @@ x <- Dataset %>%
 kable(x)
 ```
 
-For each pond, there are 2 to 6 points for clams (0 to 3) and physa (0 to 3). 
-We calculate the average D15N of the mean primary consumers and add it to the dataset.
+## 1- Trophic position
+
+Standardized D15N values are called "trophic position" (TP). We standardize N values using strict primary consumers: clams and Physa. We calculate the average D15N of the primary consumers and add it to the dataset.
 
 ``` {r calculate the baseline D15N, message = F, warning = F}
 MeanBaselineN <- Dataset %>%
@@ -167,7 +177,7 @@ Dataset %<>% mutate(TP = 2+(Dataset$D15N_Mu-Dataset$meanD15N)/Delta)
 
 ## 2- Carbon correction
 
-Again, we need primary consumers to serve as markers of the variability in carbon resources in each pond, to standardize the C isotopic value of samples into a variable called "Delta13Ccor". Taxa used are: clams, physa, zooplankton and gammares. We compute the mean of their averaged values ($D^{13}C_{meanC1}$), then correct individual carbon values (i) using the equation:   
+We need taxa to serve as markers of the variability in carbon resources in each pond, to standardize the C isotopic value of samples into a variable called "Delta 13C corrected". Taxa used are: clams, physa, zooplankton, gammarus, corixidae and asellus. We compute the mean of their averaged values ($D^{13}C_{meanC1}$), then correct individual carbon values (i) using the equation:   
 $D^{13}C_{cor} = (D^{13}C_{i} - D^{13}C_{meanC1}) / range D^{13}C_{C1}$
 
 
@@ -191,12 +201,15 @@ Dataset %<>% mutate(D13Ccor_consoI = (D13C_LFMu - meanavD13C) /
 ```
 
 
+We now have standardized isotope values!
 
 # C- Export dataset
 
-Verify that we still have the correct number of rows
+Verify that we still have the correct number of rows and keep only the taxa of interest for the next steps.
 ```{r check nb rows 2}
 dim(Dataset)[1] == 1306
+
+Dataset %<>% filter(Group %in% c("Amphibians", "Crayfish"))
 ```
 
 Export the dataset
@@ -210,3 +223,5 @@ if (file.exists(file.path(here(),"exported_data")) == FALSE){
 write.csv(Dataset, file.path(here(), "exported_data", 
                              "Isotope_data_standardized.csv"), row.names = F)
 ```
+
+In the next vignette, we will install siar, a R package required to calculate standard ellipses.

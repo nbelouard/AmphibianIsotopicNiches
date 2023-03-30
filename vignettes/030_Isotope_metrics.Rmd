@@ -10,8 +10,8 @@ editor_options:
   chunk_output_type: console
 ---
 
-This vignette computes all isotopic niche metrics relative to populations and communities.
-We first load the packages and the dataset.
+This vignette computes all the population stable isotope niche metrics.
+We first load the packages.
 
 ```{r setup, warning = F, message = F}
 library(SIBER)
@@ -27,56 +27,32 @@ library(reshape2)
 library(spatstat.utils)
 ```
 
+We then load the dataset and keep only the variables that will be useful. 
+```{r load dataset}
 
-```{r load datasets}
-
-# Full dataset, with C1, crayfish and amphibians
 Dataset <- read.csv(file.path(here(), "exported_data", 
                                        "Isotope_data_standardized.csv"), 
                     header=T)
 
-kable(Dataset)
+Dataset %<>% dplyr::select(Pond, Taxa, Species, Group, Sample_ID, 
+                    Weight, TP, D13Ccor_consoI)
+  
+head(Dataset)
 ```
-
-
-Table of the number of samples per pond
-```{r number of samples}
-
-table(Dataset$Pond, Dataset$Species)
-table(Dataset$Pond, Dataset$Taxa)
-```
-
-
-Calculate the mean sample weight per taxa
-```{r sample weights}
-
-Dataset %>%
-  group_by(Group) %>%
-  summarise(meanweight = round(mean(Weight*1000),0), 
-            sdweight = round(sd(Weight*1000),0)) %>% 
-  kable()
-```
-
 
 
 # 1- Regional niche (per species over all ponds)
 
-Select the appropriate species and get the average position of their regional niche.
+Select the appropriate species and get the average position of their regional niche. Then split the dataset per species for calculations.
 ```{r select appropriate species}
-
-Subset_Dataset <- Dataset %>% dplyr::filter(!Group == "C1")
-
-Subset_Dataset %>% group_by(Species) %>% 
-  summarise(meanTP = mean(TP),
-            meanD13C = mean(D13Ccor_consoI))
-
-spx <- split(Subset_Dataset$D13Ccor_consoI, Subset_Dataset$Species, 
-             drop = TRUE)
-spy <- split(Subset_Dataset$TP, Subset_Dataset$Species, drop = TRUE)
+spx <- split(Dataset$D13Ccor_consoI, Dataset$Species, drop = TRUE)
+spy <- split(Dataset$TP, Dataset$Species, drop = TRUE)
 
 ```
 
+
 ## a- SEA coordinates
+
 Generate the coordinates of the standard ellipses for each regional niche and export them.
 ```{r regional SEAc coordinates}
 
@@ -102,7 +78,10 @@ write.csv(CoordSEAc, file.path(here(), "exported_data",
                                "Coordinates_SEAc_regional.csv"), row.names = F)
 ``` 
 
-## b- Area of ellipses overlap for regional niches
+
+## b- Ellipse areas and overlap at the regional scale
+
+Calculate the ellipse areas and the overlap with other species at the regional scale
 ```{r area of ellipses overlap}
 
 #Initialize vectors
@@ -159,7 +138,7 @@ AreaSp2 <- append(AreaSp2, Overlap$area2, after = length(AreaSp2))
 ```
 
 
-Visualize regional overlaps and export them
+Merge all values in a single table and export it
 ``` {r analyses of regional overlaps}
 
 Table <- cbind(Species1, Species2, AreaOverlap = round(AreaOverlap,4), 
@@ -179,10 +158,6 @@ write.csv(Table, file.path(here(), "exported_data",
 
 
 
-
-
-
-
 # 2- Population metrics
 
 We calculate population metrics for amphibians and crayfish.
@@ -191,90 +166,57 @@ We begin with selecting the species of interest and removing populations with in
 
 ```{r select appropriate populations, message = F, warning = F}
 
-Subset_Dataset <- Dataset %>% dplyr::filter(!Group == "C1")
-
 # We want to exclude target populations with n < 10, except three pops: marbled newt in ponds P04 and P11, and palmate newt in pop P10 where we assume we have sampled the entire population.
-Subset_Dataset %>% group_by(Species, Pond) %>% summarise(n = n()) %>% 
+Dataset %>% group_by(Species, Pond) %>% summarise(n = n()) %>% 
   filter(n < 10)
 
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Crayfish"|
-                                 !Subset_Dataset$Pond == "P06",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Agile frog"|
-                                 !Subset_Dataset$Pond=="P02",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Agile frog"|
-                                 !Subset_Dataset$Pond=="P17",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Marbled newt"|
-                                 !Subset_Dataset$Pond=="P08",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Marbled newt"|
-                                 !Subset_Dataset$Pond=="P10",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="P07",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond== "P13",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond== "P14",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="P16",]
-Subset_Dataset<-Subset_Dataset[!Subset_Dataset$Species=="Palmate newt"|
-                                 !Subset_Dataset$Pond=="P17",]
+Dataset<-Dataset[!Dataset$Species=="Crayfish"|
+                                 !Dataset$Pond == "P06",]
+Dataset<-Dataset[!Dataset$Species=="Agile frog"|
+                                 !Dataset$Pond=="P02",]
+Dataset<-Dataset[!Dataset$Species=="Agile frog"|
+                                 !Dataset$Pond=="P17",]
+Dataset<-Dataset[!Dataset$Species=="Marbled newt"|
+                                 !Dataset$Pond=="P08",]
+Dataset<-Dataset[!Dataset$Species=="Marbled newt"|
+                                 !Dataset$Pond=="P10",]
+Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
+                                 !Dataset$Pond=="P07",]
+Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
+                                 !Dataset$Pond== "P13",]
+Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
+                                 !Dataset$Pond== "P14",]
+Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
+                                 !Dataset$Pond=="P16",]
+Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
+                                 !Dataset$Pond=="P17",]
 
 
-table(Subset_Dataset$Pond, Subset_Dataset$Species)
+table(Dataset$Pond, Dataset$Species)
 
 # Separate per niche (species x pond)
-spx <- split(Subset_Dataset$D13Ccor_consoI, 
-             list(Subset_Dataset$Pond, Subset_Dataset$Species), drop = TRUE)
-spy <- split(Subset_Dataset$TP, 
-             list(Subset_Dataset$Pond, Subset_Dataset$Species), drop = TRUE)
+spx <- split(Dataset$D13Ccor_consoI, 
+             list(Dataset$Pond, Dataset$Species), drop = TRUE)
+spy <- split(Dataset$TP, 
+             list(Dataset$Pond, Dataset$Species), drop = TRUE)
+
 ```
 
-Check if the number of populations is correct
-
+Check if the number of individuals is correct
 ```{r check number of individuals is correct}
 
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Agile frog",])[1] == 254 
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Tree frog",])[1] == 168
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Palmate newt",])[1] == 192
-dim(Subset_Dataset[Subset_Dataset$Taxa=="Marbled newt",])[1] == 101
-dim(Subset_Dataset[Subset_Dataset$Species=="Crayfish",])[1] == 348
+dim(Dataset[Dataset$Taxa=="Agile frog",])[1] == 254 
+dim(Dataset[Dataset$Taxa=="Tree frog",])[1] == 168
+dim(Dataset[Dataset$Taxa=="Palmate newt",])[1] == 192
+dim(Dataset[Dataset$Taxa=="Marbled newt",])[1] == 101
+dim(Dataset[Dataset$Species=="Crayfish",])[1] == 348
 
 ```
 
 
-## a- Calculation of SEAc
+## a- SEA coordinates 
 
-We first calculate SEAc on each population for each pond. This is done by providing a vector containing the list of populations and ponds.
-
-```{r calculate population ellipses}
-
-Subset_Dataset_ellipses <- Subset_Dataset %>% 
-  dplyr::select("iso1" = D13Ccor_consoI, "iso2" = TP, "group" = Species, 
-                "community" = Pond) %>%
-  as.data.frame()
-
-Subset_Dataset_SIBER <- createSiberObject(Subset_Dataset_ellipses)
-Pop_metrics_SEAc <- groupMetricsML(Subset_Dataset_SIBER)
-
-#Table transformation
-Pop_metrics_ellipses <- as.data.frame(t(Pop_metrics_SEAc))
-Pop_metrics_ellipses$Code <- rownames(Pop_metrics_ellipses)
-Pop_metrics_ellipses$Pond <- gsub("[.].*","",Pop_metrics_ellipses$Code)
-Pop_metrics_ellipses$Species <- gsub(".*.[.]","",Pop_metrics_ellipses$Code)
-
-```
-
-
-```{r merge datasets}
-
-Pop_metrics <- Pop_metrics_ellipses[-1]
-
-write.csv(Pop_metrics, 
-          file.path(here(), "exported_data", "Population_metrics.csv"), 
-          row.names = F)
-```
-
-
-## b- SEA coordinates 
+We then generate the coordinates of the ellipses so we can plot them later.
 
 ```{r population SEAc coordinates, warning = F, message = F}
 
@@ -309,10 +251,8 @@ write.csv(CoordSEAc,
 ``` 
 
 
+Calculate the mean position of standard ellipses (centroids) at the pond level
 ```{r centroides of standard ellipses}
-
-CoordSEAc <- read.csv(file.path(here(), "exported_data",
-                                "Coordinates_SEAc_populations.csv"), header=T)
 
 Mean_position <- CoordSEAc %>% group_by(Pond, Species, Pop) %>%
   summarise(TPavg = mean(coordY),
@@ -326,16 +266,18 @@ write.csv(Mean_position, file.path(here(), "exported_data",
 
 
 
-## c- Area of ellipses overlap
+## b- Ellipse areas and overlap at the pond scale
+
+Calculate the area and percentage of ellipse overlap at the population level
 
 ```{r area of ellipses overlap: initialize vectors}
 
 #Split dataset by species
-Crayfish <- Subset_Dataset %>% filter(Species == "Crayfish")
-Treefrog <- Subset_Dataset[Subset_Dataset$Taxa == "Tree frog",] 
-Agilefrog <- Subset_Dataset[Subset_Dataset$Taxa == "Agile frog",] 
-Palmatenewt <- Subset_Dataset[Subset_Dataset$Taxa == "Palmate newt",] 
-Marblednewt <- Subset_Dataset[Subset_Dataset$Taxa == "Marbled newt",] 
+Crayfish <- Dataset %>% filter(Species == "Crayfish")
+Treefrog <- Dataset %>% filter(Species == "Tree frog")
+Agilefrog <- Dataset %>% filter(Species == "Agile frog") 
+Palmatenewt <- Dataset %>% filter(Species == "Palmate newt")
+Marblednewt <- Dataset %>% filter(Species == "Marbled newt") 
 
 
 #For each species, split dataset by pond
@@ -501,7 +443,7 @@ for (i in names(spx_Palmatenewt)) {
 ```
 
 
-## Analyses of overlap areas
+Merge them in a table and export it
 
 ``` {r analyses of population overlaps}
 
@@ -520,6 +462,32 @@ write.csv(Table, file.path(here(), "exported_data", "Overlap_populations.csv"),
 
 ```
 
+Finally generate a table with all SEAc at the pond scale
+
+```{r calculate population ellipses}
+
+Dataset_ellipses <- Dataset %>% 
+  dplyr::select("iso1" = D13Ccor_consoI, "iso2" = TP, "group" = Species, 
+                "community" = Pond) %>%
+  as.data.frame()
+
+Dataset_SIBER <- createSiberObject(Dataset_ellipses)
+Pop_metrics_SEAc <- groupMetricsML(Dataset_SIBER)
+
+#Table transformation
+Pop_metrics_ellipses <- as.data.frame(t(Pop_metrics_SEAc))
+Pop_metrics_ellipses$Code <- rownames(Pop_metrics_ellipses)
+Pop_metrics_ellipses$Pond <- gsub("[.].*","",Pop_metrics_ellipses$Code)
+Pop_metrics_ellipses$Species <- gsub(".*.[.]","",Pop_metrics_ellipses$Code)
+
+write.csv(Pop_metrics_ellipses[-1], 
+          file.path(here(), "exported_data", "Population_metrics.csv"), 
+          row.names = F)
+```
+
+
+# Long table
+Generate the long version of this table combining SEAc and mean position for Supplementary Material
 
 ```{r generate the long version of this table for Supp Mat}
 
@@ -542,5 +510,4 @@ Pop_metrics_long <- rbind(
 
 write.csv(Pop_metrics_long, file.path(here(), "exported_data", "Population_metrics_long.csv"), row.names = F)
 ```
-
 

@@ -2,7 +2,7 @@
 
 This project contains all the scripts and data used in the article: N. Belouard, E.J. Petit, J. Cucherousset, J.M. Paillisson. Local stable isotope niche partitioning and the coexistence between native amphibians and invasive crayfish, currently submitted to Oecologia.
 
-Invasive species are widely reported to cause local extinctions of native species. The red swamp crayfish, _Procambarus clarkii_, has been repeatedly shown to impact amphibians through predation and competition. Studying species isotopic niches in natural ecosystems where this crayfish coexists with native amphibians is a way to test our comprehension of the mechanisms underlying species coexistence.  
+Invasive species are widely reported to cause local extinctions of native species. The red swamp crayfish, _Procambarus clarkii_, has been repeatedly shown to impact amphibians through predation and competition. Studying species stable isotope niches in natural ecosystems where this crayfish coexists with native amphibians is a way to test our comprehension of the mechanisms underlying species coexistence.  
 
 ## Pre-requisites
 

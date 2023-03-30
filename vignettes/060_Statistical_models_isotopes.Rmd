@@ -41,8 +41,11 @@ library(dplyr)
 library(tibble)
 library(gridExtra)
 library(here)
+library(cowplot)
 
 ```
+
+Then we load the datasets: environmental variables, population metrics and mean position.
 
 ```{r load datasets}
 #Load datasets
@@ -59,6 +62,7 @@ Mean_position <- read.csv(file.path(here(), "exported_data",
 names(Mean_position)[3] <- "Code"
 ```
 
+We merge the different datasets and create a "Group" column (newts or tadpoles). We also create a dataset that keeps only amphibian populations for analysis of the variation in niche metrics.
 ```{r merge datasets}
 
 Pop_metrics <- merge(Niche_metrics, Mean_position, 
@@ -147,13 +151,14 @@ write.csv(SEA_dredge, file.path(here(), "exported_data",
 
 ```
 
-One model is retained for SEAc.
+One model is retained for SEAc, it contains the variables agile frog and marbled newt.
 
- 
+We check the content of this model as well as the first model containing either Crayfish abundance or Crayfish presence.
 ```{r check the content of each model for SEAc, include=FALSE}
 SEA_dredge <- dredge(mod_SEA, rank = AICc, 
                      m.lim = c(0,2), extra="R^2", evaluate=FALSE)
 
+# First model
 SEA_dredge$'67'
 Model_selected1 <- lm(log(SEAc) ~ scale(Agile_frog) + scale(Marbled_newtCPUE),
              na.action="na.fail", data = Pop_dataset)
@@ -165,42 +170,44 @@ round(res$coefficients,2)
 Anova(Model_selected1)
 
 
+# First model with crayfish abundance
 SEA_dredge$'49'
 Model_selected1 <- lm(log(SEAc) ~ scale(Canopycover) +
                           scale(CrayfishCPUE),
              na.action="na.fail", data = Pop_dataset)
 plotresid(Model_selected1)
-
-# summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 Anova(Model_selected1)
 
 
-
+#First model with crayfish presence
 SEA_dredge$'6'
 Model_selected1 <- lm(log(SEAc) ~ scale(Agile_frog) +
                           as.factor(Crayfish01),
              na.action="na.fail", data = Pop_dataset)
 plotresid(Model_selected1)
-
-# summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 Anova(Model_selected1)
 ```
 
-# Figure SEAc
+### Figure with SEAc
 ```{r corresponding figures for SEAc, include=FALSE}
 
-library(cowplot)
-
+# Organize factor levels
 Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
                                                     "Agile frog",
                                                     "Tree frog",
                                                     "Palmate newt",
                                                     "Marbled newt"))
 
+Pop_dataset %<>% mutate(Crayfish01 = dplyr::recode(Crayfish01, 
+                                          "1" = "present",
+                                          "0" = "absent"))
+
+
+# Figure with marbled newt
 SEAc_marbre <- ggplot(Pop_dataset, aes(y = log(SEAc), 
                                        x = scale(Marbled_newtCPUE)
                                        # , group = Species
@@ -216,7 +223,7 @@ SEAc_marbre <- ggplot(Pop_dataset, aes(y = log(SEAc),
 
 SEAc_marbre
 
-
+# Figure with agile frog
 SEAc_agile <- ggplot(Pop_dataset,
                      aes(y = log(SEAc),
                          x = scale(Agile_frog)
@@ -234,9 +241,7 @@ SEAc_agile <- ggplot(Pop_dataset,
 SEAc_agile
 
 
-Pop_dataset %<>% mutate(Crayfish01 = dplyr::recode(Crayfish01, 
-                                          "1" = "present",
-                                          "0" = "absent"))
+# Figure with crayfish presence
 SEAc_crayfish <- ggplot(Pop_dataset, 
              aes(y = log(SEAc), 
                  x = as.factor(Crayfish01)
@@ -253,13 +258,14 @@ SEAc_crayfish <- ggplot(Pop_dataset,
 
 SEAc_crayfish
 
-
+# Arrange the 3 figures on a row
 SEAc <- grid.arrange(SEAc_marbre, SEAc_agile, SEAc_crayfish, ncol = 3)
 ```
 
 
-### Mean TP
+## Mean TP
 
+First check the model GOF
 ```{r check GOF for mean TP, include=FALSE}
 
 # Check residuals
@@ -272,7 +278,7 @@ plotresid(mod1) #residuals ok
 
 ```
 
-Again, very low variance for the random effect species, so we remove it.
+Again, very low variance for the random effect species, so we remove it. Residuals look normal.
  
 ```{r dredge TP model, include=FALSE}
 
@@ -292,11 +298,13 @@ write.csv(TP_dredge, file.path(here(), "exported_data",
                              "TP_selection.csv"), row.names = F)
 ```
 
- 
+A single model is kept by the selection, it contains the variables group and canopy cover. 
+We check the content of this model as well as the first model containing either Crayfish abundance or Crayfish presence.
 ```{r check the content of each model for TP, include=FALSE}
 
 TP_dredge <- dredge(mod_TP, rank = AICc, m.lim = c(0,2), extra="R^2", evaluate=FALSE)
 
+# First model
 TP_dredge$'18'
 Model_selected1 <- lm(TPavg ~ scale(Canopycover) + Group, 
                          na.action="na.fail", data=Pop_dataset)
@@ -305,7 +313,7 @@ summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 
-
+#First model with crayfish abundance
 TP_dredge$'34'
 Model_selected1 <- lm(TPavg ~ scale(CrayfishCPUE) + Group, 
                         na.action="na.fail", 
@@ -315,7 +323,7 @@ summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 
-
+#First model with crayfish presence
 Model_selected1 <- lm(TPavg ~ as.factor(Crayfish01) + Group, 
                         na.action="na.fail", 
                         data=Pop_dataset)
@@ -327,34 +335,10 @@ round(res$coefficients,2)
 ```
 
  
+### Figure with TP
 ```{r corresponding figures for TP, include=FALSE}
 
-TP_canopy <- ggplot(Pop_dataset, aes(y = TPavg, x = scale(Canopycover))) +
-  geom_smooth(method="lm",se=F, col = "black") +
-    geom_point(aes(col = Species), size = 2) +
-    scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab("Canopy cover, scaled") +
-  ylab(NULL) +
-  theme_classic() + 
-  theme(legend.position="none")
-
-  TP_canopy
-
-  
-  TP_crayfish <- ggplot(Pop_dataset, aes(y = TPavg, x = as.factor(Crayfish01))) +
-    geom_boxplot(show.legend = F) +
-      geom_jitter(aes(col = Species), size = 2) +
-    scale_color_manual(values = c("#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab("Crayfish") +
-      ylab(NULL) +
-  theme_classic() +
-  theme(legend.position="none")
-
-  TP_crayfish
-
-
+# Figure with group
 Pop_dataset$Group <- factor(Pop_dataset$Group, levels = c("Tadpoles", "Newts")) 
   
     TP_group <- ggplot(Pop_dataset, aes(y = TPavg, x = Group)) +
@@ -370,16 +354,45 @@ scale_color_manual(values = c("#0072B2", "#009E73",
   TP_group
 
   
+# Figure with canopy cover
+TP_canopy <- ggplot(Pop_dataset, aes(y = TPavg, x = scale(Canopycover))) +
+  geom_smooth(method="lm",se=F, col = "black") +
+    geom_point(aes(col = Species), size = 2) +
+    scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Canopy cover, scaled") +
+  ylab(NULL) +
+  theme_classic() + 
+  theme(legend.position="none")
+
+  TP_canopy
+
+  
+# Figure with crayfish presence
+  TP_crayfish <- ggplot(Pop_dataset, aes(y = TPavg, x = as.factor(Crayfish01))) +
+    geom_boxplot(show.legend = F) +
+      geom_jitter(aes(col = Species), size = 2) +
+    scale_color_manual(values = c("#0072B2", "#009E73", 
+                                "#56B4E9", "#CC79A7")) +
+  xlab("Crayfish") +
+      ylab(NULL) +
+  theme_classic() +
+  theme(legend.position="none")
+
+  TP_crayfish
+
+
+
+# We put all three figures on a single row
 TP <- grid.arrange(TP_group, TP_canopy, TP_crayfish, ncol = 3)
   
 ```
 
  
-### Mean d13C
- 
+## Mean d13C
+
+We check the GOF of the model with D13C
 ```{r check GOF for D13C, include=FALSE}
- 
-# Check residuals
 
 mod1 <- lmer(D13Cavg ~ scale(Canopycover) + (1|Species), 
              na.action="na.fail", data=Pop_dataset)
@@ -391,7 +404,7 @@ mod1 <- lm(D13Cavg ~ scale(Palmate_newt) + Group,
 plotresid(mod1) #residuals ok
 ```
 
-The random effect species is again very low, we remove it.
+The random effect species is again very low, we remove it. Very few points don't follow normality of the residuals. Transformations are however inappropriate for this variable because of negative values. We keep the variable untransformed.
 
 ```{r dredge D13C model, include=FALSE}
  
@@ -412,11 +425,14 @@ write.csv(D13C_dredge, file.path(here(), "exported_data",
 
 ```
 
+Again, a single model is kept, it contains the variable gruop and palmate newt.
+We check the content of this model as well as the first model containing either Crayfish abundance or Crayfish presence.
  
 ```{r check the content of each model for D13C, include=FALSE}
 
 D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2", evaluate=FALSE)
 
+#First model
 D13C_dredge$'130'
 Model_selected1 <- lm(D13Cavg ~ scale(Palmate_newt) + Group, 
                       na.action="na.fail", data=Pop_dataset)
@@ -425,7 +441,7 @@ summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 
-
+# First model with crayfish abundance
 D13C_dredge$'34'
 Model_selected1 <- lm(D13Cavg ~ scale(CrayfishCPUE) + Group, 
                       na.action="na.fail", data=Pop_dataset)
@@ -434,7 +450,7 @@ summary(Model_selected1)
 res <- summary(Model_selected1)
 round(res$coefficients,2)
 
-
+# First model with crayfish presence
 Model_selected1 <- lm(D13Cavg ~ as.factor(Crayfish01) + Group, 
                       na.action="na.fail", data=Pop_dataset)
 plotresid(Model_selected1)
@@ -443,9 +459,10 @@ res <- summary(Model_selected1)
 round(res$coefficients,2)
 ```
 
- 
+### Figure with D13C 
 ```{r corresponding figures for D13C, include=FALSE}
 
+#Figure with group
 D13C_group <- ggplot(Pop_dataset, aes(y = D13Cavg, x = Group)) +
   geom_boxplot(show.legend = F) +
       geom_jitter(aes(col = Species), size = 2) +
@@ -457,7 +474,7 @@ scale_color_manual(values = c("#0072B2", "#009E73",
   theme(legend.position="none")
 D13C_group
 
-
+#Figure with palmate newt
 D13C_palmate <- ggplot(Pop_dataset, aes(y = D13Cavg, 
                               x = scale(Palmate_newt))) +
   geom_point(aes(col = Species), size = 2, show.legend = F) +
@@ -469,7 +486,7 @@ scale_color_manual(values = c("#0072B2", "#009E73",
   theme_classic()
 D13C_palmate
 
-
+# Figure with crayfish presence
 D13C_crayfish <- ggplot(Pop_dataset, aes(y = D13Cavg, 
                               x = as.factor(Crayfish01))) +
   geom_boxplot(show.legend = F) +
@@ -481,12 +498,14 @@ scale_color_manual(values = c("#0072B2", "#009E73",
   theme_classic()
 D13C_crayfish
 
+# Put all 3 figures on a single row
 D13C <- grid.arrange(D13C_group, D13C_palmate, D13C_crayfish, ncol = 3)
 
 ```
 
 
-### Figure 3
+## Figure 3
+Finally we assemble all the different metrics on a single figure
 ```{r figure 3}
 
 # Get the legend
@@ -501,7 +520,6 @@ scale_color_manual(values = c("#0072B2", "#009E73",
   theme_classic() +
   theme(legend.position = "bottom")
 
-library(cowplot)
 get_legend(legend)
 
 g <- ggdraw() +
