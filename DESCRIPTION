@@ -1,5 +1,5 @@
-Package: IsotopicCoexistence
-Title: Testing The Coexistence Theory With Stable Isotope Niches
+Package: AmphibianIsotopicNiches
+Title: Stable Isotope Niches of Amphibians in Invaded Ponds
 Version: 1.0
 Authors@R: 
     person("Nadège", "Belouard", , "nadege.belouard@gmail.com", role = c("aut", "cre"),
