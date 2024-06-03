@@ -1,8 +1,8 @@
 ---
-title: "#3: Compute niche metrics"
+title: "#2: Compute niche metrics"
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR DECOD, nadege.belouard@gmail.com]
-date: "23/03/2023"
+- Nadege Belouard^[UMR EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+date: "03/06/2024"
 output:
   pdf_document:
     toc: yes
@@ -22,7 +22,6 @@ library(magrittr)
 library(tidyr)
 library(tibble)
 library(knitr)
-library(siar)
 library(reshape2)
 library(spatstat.utils)
 ```
@@ -40,87 +39,152 @@ Dataset %<>% dplyr::select(Pond, Taxa, Species, Group, Sample_ID,
 head(Dataset)
 ```
 
+
 # 1- Crayfish ontogenetic shift
-Add crayfish length data
+
+First we are looking into whether there is an ontogenetic shift in crayfish. 
+Wee load the crayfish length data
 ```{r load dataset}
 
+# load file
 CrayfishLength <- read.table(file.path(here(), "data_raw", 
                                        "CrayfishLength.txt"), 
                     header=T)
-dim(CrayfishLength)
 
+# keep only the stable isotope data for crayfish
 Crayfish <- Dataset %<>% filter(Species == "Crayfish")
-dim(Crayfish)
 
+# join the two datasets to obtain the length and stable isotope values for each individual
 Crayfish %<>% left_join(CrayfishLength, by = "Sample_ID")
-dim(Crayfish)
-Crayfish %>% filter(is.na(Length))
+# check that all individuals have been associated with a length
+dim(Crayfish %>% filter(is.na(Length)))[1] == 0
 ```
 
-Visualize ontogenetic shift
+Plot the data to see if there is an ontogenetic shift
 ```{r graph shift}
 
-# Isotopic space
+# Isotopic biplot
 ggplot(data = Crayfish, aes(x = TP, y = D13Ccor_consoI)) +
   geom_point(aes(col = Taxa)) +
   facet_wrap(~Pond)
+``` 
 
-# D13C
+Test the ontogenetic shift on the carbon values first
+```{r test shift on carbon values}
+# Plot the D13C data against the crayfish length
 ggplot(data = Crayfish, aes(y = D13Ccor_consoI, x = Length)) +
-  geom_point(aes(col = Taxa), show.legend = F) +
-  # geom_smooth(method = lm, se = FALSE, col = "darkgray") +
+  geom_point(aes(), show.legend = F) +
+  geom_smooth(method = lm, se = FALSE, col = "darkgray") +
   facet_wrap(~Pond) +
   xlab("Crayfish length (mm)") +
   ylab(bquote(''*delta^13~C["cor"]*'')) +
   theme_classic()
-# Increase in D13Ccor with length, except in P10, P14, P15, P16
+# There is an ncrease in D13Ccor with length, except in P06, P10, P14, P16
 
+# Run the linear models for each pond
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P05")) 
+summary(Onto13C)
+# P05 D13Ccor_consoI = -0.944143 + 0.006091 * length, p = 1.68e-06 ***
+shapiro.test(Onto13C$residuals)
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P07")) 
+summary(Onto13C)
+# P07 y = -0.4014810 + 0.0051519 x, p = 7.19e-12 ***
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P08")) 
+summary(Onto13C)
+# P08 y = -0.1880660 + 0.006687 x, p = 7.36e-13 ***
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P09")) 
+summary(Onto13C)
+# P09 y = -0.2867501 + 0.0047571 x, p = 7.82e-16 ***
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P10")) 
+summary(Onto13C)
+# P10 y = 0.127039 - 0.003261 x, p = 0.00865 ** NEGATIVE ESTIMATE
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P13")) 
+summary(Onto13C)
+# P13 y = -0.1429704 + 0.0041330 x, p = 1e-08 ***
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P14")) 
+summary(Onto13C)
+# P14 y = 0.0562290 -0.0012756 x, p = 0.132 NS and NEGATIVE ESTIMATE
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P15")) 
+summary(Onto13C)
+# P15 y = 0.0181422 + 0.0021203 x, p = 5.78e-05 ***
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P16")) 
+summary(Onto13C)
+# P16 y = 0.257888 - 0.002912 x, p = 0.0237 * NEGATIVE ESTIMATE
+
+Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P17")) 
+summary(Onto13C)
+# P17 y = -0.7509301 + 0.0101905 x, p = 1.14e-11 ***
 
 Onto13C <- lm(D13Ccor_consoI ~ Length, data = Crayfish %>% filter(Pond == "P18")) 
 summary(Onto13C)
-shapiro.test(Onto13C$residuals)
-# P05 D13Ccor_consoI = -0.944143 + 0.006091 * length, p = 1.68e-06 ***
-# P07 y = -0.4014810 + 0.0051519 x, p = 7.19e-12 ***
-# P08 y = -0.1880660 + 0.006687 x, p = 7.36e-13 ***
-# P09 y = -0.2867501 + 0.0047571 x, p = 7.82e-16 ***
-# P10 y = 0.127039 - 0.003261 x, p = 0.00865 ** NEGATIVE
-# P13 y = -0.1429704 + 0.0041330 x, p = 1e-08 ***
-# P14 y = 0.0562290 -0.0012756 x, p = 0.132 NEGATIVE
-# P15 y = 0.0181422 + 0.0021203 x, p = 5.78e-05 ***
-# P16 y = 0.257888 - 0.002912 x, p = 0.0237 * NEGATIVE
-# P17 y = -0.7509301 + 0.0101905 x, p = 1.14e-11 ***
 # P18 y = -0.238652 + 0.006569 x, p = 7.66e-08 ***
+``` 
 
- 
-#TP
+Now test for nitrogen values
+```{r test shift on nitrogen values} 
+
+#Plot the ontogenetic shift on nitrogen values against crayfish length
 ggplot(data = Crayfish, aes(x = Length, y = TP)) +
-  geom_point(aes(col = Taxa), show.legend = F) +
-  # geom_smooth(method = lm, se = FALSE, col = "darkgray") +
+  geom_point(aes(), show.legend = F) +
+  geom_smooth(method = lm, se = FALSE, col = "darkgray") +
   facet_wrap(~Pond) +
   xlab("Crayfish length (mm)") +
   # ylab("TP") +
   theme_classic()
 
-model <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P18"))
-summary(model)
-shapiro.test(model$residuals)
-# P05 y = 2.6661974 -0.0035418 x, p = 5.7e-05 ***, NEGATIVE
-# P07 y = 2.864e+00 + 2.975e-05 x, p = 0.961, <<<<<<<<<<<<<<<<<<<<<
+# Run the linear model for each pond
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P05"))
+summary(OntoTP)
+shapiro.test(OntoTP$residuals)
+# P05 y = 2.6661974 -0.0035418 x, p = 5.7e-05 ***, NEGATIVE ESTIMATE
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P07"))
+summary(OntoTP)
+# P07 y = 2.864e+00 + 2.975e-05 x, p = 0.961, NS
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P08"))
+summary(OntoTP)
 # P08 y = 2.350218 + 0.011484 x, p = 1.83e-12 ***, 
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P09"))
+summary(OntoTP)
 # P09 y = 2.2342960+ 0.0046668x, p =7.23e-08 ***, 
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P10"))
+summary(OntoTP)
 # P10 y = 2.5093372+ 0.0039351x, p =8.31e-08 ***, 
-# P13 y = 2.346057-0.005903 x, p =0.000108 ***,  NEGATIVE
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P13"))
+summary(OntoTP)
+# P13 y = 2.346057-0.005903 x, p =0.000108 ***,  NEGATIVE ESTIMATE
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P14"))
+summary(OntoTP)
 # P14 y = 2.4414659+ 0.0019453x, p =0.0156 *
-# P15 y = 2.3161938+ 0.0009667x, p =0.113 OUTLIERRRRR <<<<<<<<<<<<<<<
-# P16 y = 2.510389+ 0.002087x, p =0.187 <<<<<<<<<<<<<<<<<<<<<<<<<<<
-# P17 y = 2.196241+ 0.002532x, p =0.105, OUTLIERRRRRR <<<<<<<<<<<<
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P15"))
+summary(OntoTP)
+# P15 y = 2.3161938+ 0.0009667x, p =0.113, NS
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P16"))
+summary(OntoTP)
+# P16 y = 2.510389+ 0.002087x, p =0.187, NS
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P17"))
+summary(OntoTP)
+# P17 y = 2.196241+ 0.002532x, p =0.105, NS
+
+OntoTP <- lm(TP ~ Length, data = Crayfish %>% filter(Pond == "P18"))
+summary(OntoTP)
 # P18 y = 1.8632440+ 0.0039885x, p =0.000158 ***
-
-
-# 3D graph
-install.packages("plotly")
-library(plotly)
-
 ```
 
 # 2- Population metrics
@@ -157,14 +221,29 @@ Dataset<-Dataset[!Dataset$Species=="Palmate newt"|
                                  !Dataset$Pond=="P17",]
 
 
-table(Dataset$Pond, Dataset$Species)
-
 # Separate per niche (species x pond)
 spx <- split(Dataset$D13Ccor_consoI, 
              list(Dataset$Pond, Dataset$Species), drop = TRUE)
 spy <- split(Dataset$TP, 
              list(Dataset$Pond, Dataset$Species), drop = TRUE)
 
+
+
+# # In the case where we consider separately adult and juvenile crayfish (for a figure in Supp. Mat), run the following lines too
+# Dataset %>% filter(Species == "Crayfish") %>% group_by(Taxa, Pond) %>% summarise(n = n()) %>% 
+#   filter(n < 10)
+# 
+# Dataset<-Dataset[!Dataset$Taxa=="Juv crayfish"|
+#                                  !Dataset$Pond=="P09",]
+# Dataset<-Dataset[!Dataset$Taxa=="Juv crayfish"|
+#                                  !Dataset$Pond=="P16",]
+# Dataset<-Dataset[!Dataset$Taxa=="Juv crayfish"|
+#                                  !Dataset$Pond=="P17",]
+# 
+# spx <- split(Dataset$D13Ccor_consoI, 
+#              list(Dataset$Pond, Dataset$Taxa), drop = TRUE)
+# spy <- split(Dataset$TP, 
+#              list(Dataset$Pond, Dataset$Taxa), drop = TRUE)
 ```
 
 Check if the number of individuals is correct
@@ -213,6 +292,11 @@ levels(CoordSEAc$Pond)
 write.csv(CoordSEAc, 
           file.path(here(), "exported_data", "Coordinates_SEAc_populations.csv"), 
           row.names = F)
+
+## For the table corresponding to the ellipses separated by juvenile and adult crayfish, save it in the following file:
+# write.csv(CoordSEAc, 
+#           file.path(here(), "exported_data", "Coordinates_SEAc_ontogeneticshift.csv"), 
+#           row.names = F)
 ``` 
 
 
@@ -277,8 +361,8 @@ AreaSp2 = NULL
 Table = data.frame()
 ```
 
-## All crayfish
-```{r loop over all crayfish}
+Loop over all crayfish-amphibian pairs
+```{r loop over all crayfish-amphibian pairs}
 
 for (i in names(spx_Crayfish)) {
   if (length(spx_Agilefrog[[i]]) != 0) {
@@ -327,7 +411,7 @@ for (i in names(spx_Crayfish)) {
 }
 ```
 
-## Between amphibians
+Loop between amphibian species pairs
 ```{r area of ellipses overlap: loop between amphibians}
 
 for (i in names(spx_Agilefrog)) {
@@ -407,9 +491,7 @@ for (i in names(spx_Palmatenewt)) {
 
 ```
 
-
-Merge them in a table and export it
-
+Merge results in a table and export it
 ``` {r analyses of population overlaps}
 
 Table <- cbind(Pond, Species1, Species2, AreaOverlap = round(AreaOverlap,4), 
@@ -427,8 +509,7 @@ write.csv(Table, file.path(here(), "exported_data", "Overlap_populations.csv"),
 
 ```
 
-Finally generate a table with all SEAc at the pond scale
-
+Finally, generate a table with all SEAc at the pond scale
 ```{r calculate population ellipses}
 
 Dataset_ellipses <- Dataset %>% 
@@ -476,3 +557,4 @@ Pop_metrics_long <- rbind(
 write.csv(Pop_metrics_long, file.path(here(), "exported_data", "Population_metrics_long.csv"), row.names = F)
 ```
 
+The next step will be to plot these communities.

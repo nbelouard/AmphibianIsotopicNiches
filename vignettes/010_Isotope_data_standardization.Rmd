@@ -1,8 +1,8 @@
 ---
 title: '#1: Isotope data standardization'
 author: 
-- Nadege Belouard^[UMR EcoBio, UMR DECOD, nadege.belouard@gmail.com]
-date: "23/03/2023"
+- Nadege Belouard^[UMR EcoBio, UMR DECOD nadege.belouard@gmail.com]
+date: "03/06/2024"
 output:
   html_document:
     toc: yes
@@ -224,4 +224,4 @@ write.csv(Dataset, file.path(here(), "exported_data",
                              "Isotope_data_standardized.csv"), row.names = F)
 ```
 
-In the next vignette, we will install siar, a R package required to calculate standard ellipses.
+In the next vignettes, we will install the package siar, then compute the niche metrics necessary for the analysis of the stable isotope niches.

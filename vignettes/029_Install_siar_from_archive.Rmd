@@ -18,7 +18,9 @@ untar(file.path(here(), "siar_4.2.tar.gz"), exdir = file.path(here()))
 # Install dependencies list in the DESCRIPTION file
 install.packages(c("hdrcde", "coda", "MASS", "bayesm", "mnormt", "spatstat", "tmvnsim"))
 # Install package
-install.packages(pkgs=file.path(here(), "siar_4.2.tar.gz"), type="source", repos=NULL)
+install.packages(pkgs=file.path(here(), "/siar"), type="source", repos=NULL) #, "siar_4.2.tar.gz"
 # Delete package tarball
 unlink(file.path(here(), "siar_4.2.tar.gz"))
 ```
+
+Note that the SIBER package now contains most of the functions that were contained in siar.

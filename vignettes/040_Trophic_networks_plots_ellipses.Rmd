@@ -1,14 +1,14 @@
 ---
-title: "#4: Network plots with ellipses"
+title: "#3: Plots stable isotope niches with ellipses"
 author: 
-- Nadege Belouard^[UMR CNRS EcoBio, UMR DECOD, nadege.belouard@gmail.com]
-date: "23/03/2023"
+- Nadege Belouard^[UMR EcoBio, URM DECOD, nadege.belouard@gmail.com]
+date: "03/06/2024"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
 
-This vignette draws all the plots related to the trophic networks. First, we load the different packages and datasets that we need.
+This vignette draws all the stable isotope plots for amphibian and crayfish populations. First, we load the different packages and datasets that we need.
 
 ```{r setup, warning = F, message = F}
 library(ggplot2)
@@ -29,10 +29,12 @@ CoordSEAc_pop <- read.csv(file.path(here(),
                           header=T)
 names(CoordSEAc_pop)[1] <- "Taxa"
 
-#Per species
-CoordSEAc_sp <- read.csv(file.path(here(), "exported_data", 
-                                   "Coordinates_SEAc_regional.csv"), header=T)
-
+## If you want to compute ellipses separately for juvenile and adult crayfish, use this file
+# CoordSEAc_pop <- read.csv(file.path(here(), 
+#                                     "exported_data", 
+#                                     "Coordinates_SEAc_ontogeneticshift.csv"), 
+#                           header=T)
+# names(CoordSEAc_pop)[1] <- "Taxa"
 
 # Average points
 Avg_data_complete <- Dataset %>% group_by(Taxa, Pond) %>%
@@ -45,42 +47,6 @@ Avg_data_complete <- Dataset %>% group_by(Taxa, Pond) %>%
 ```
 
 We summarize each taxa by the average point and its SD to graphically represent the position and the variability in the isotopic signature of each taxa.
-
-
-# Plots with ellipses per species
-
-## Figure 1: ellipses per species with points
-```{r plot network with ellipses per species and all individuals}
-
-# With outliers
-M_ind <- Dataset %>% filter (Group %in% c("Crayfish", "Amphibians"))
-M_coord <- CoordSEAc_sp
-M_ind$Species <- factor(M_ind$Species, levels = c("Crayfish",
-                                                    "Agile frog",
-                                                    "Tree frog",
-                                                    "Palmate newt",
-                                                    "Marbled newt"))
-
-species_ellipses <- ggplot(data = M_ind, aes(x = D13Ccor_consoI, y = TP)) +
-  geom_point(aes(col = Species), alpha = 0.7, shape = 16) +
-  geom_path(data = M_coord, aes(coordX, coordY, col = Species), lwd = 1.5) +
-  scale_color_manual(values = c("#E69F00", 
-                                "#0072B2", "#009E73", 
-                                "#56B4E9", "#CC79A7")) +
-  xlab(bquote(''*delta^13~C["cor"]*'')) +
-  guides(col = guide_legend("Species")) +
-  ylab("Trophic position") +
-  theme_classic() + 
-  # theme(legend.justification = c(0, 1), legend.position = c(0, 1))
-  theme(legend.position = "right")
-
-species_ellipses
-
-ggsave(species_ellipses, filename = file.path(here(), "figures", 
-                                              "ellipses_species.jpg"), 
-       height = 3.5, width = 5)
-```
-
 
 # Plots with ellipses per population per pond
 
@@ -156,6 +122,88 @@ ellipses_pop
 
 ggsave(ellipses_pop, filename = file.path(here(), "figures",
                                           "ellipses_pop_points_portrait.jpg"),
+       width = 10, height = 15)
+
+```
+
+
+# Plots with ellipses for crayfish ontogenetic shift
+
+## Figure S3: plots with ellipses per population with points
+```{r plot ellipses per population with points}
+
+M_ind$Taxa <- factor(M_ind$Taxa, levels = c("Ad crayfish",
+                                                  "Juv crayfish",
+                                                  "Agile frog",
+                                                    "Tree frog",
+                                                    "Palmate newt",
+                                                    "Marbled newt"))
+
+# Set limits for x values
+blank_data <- data.frame(Pond = c("P01", "P01",
+                                   "P02", "P02",
+                                   "P03", "P03",
+                                   "P04", "P04",
+                                   "P05", "P05",
+                                   "P06", "P06",
+                                   "P07", "P07",
+                                   "P08", "P08",
+                                   "P09", "P09",
+                                   "P10", "P10",
+                                   "P11", "P11",
+                                   "P12", "P12",
+                                   "P13", "P13",
+                                   "P14", "P14",
+                                  "P15", "P15",
+                                   "P16", "P16",
+                                   "P17", "P17",
+                                   "P18", "P18"
+                                   ),
+                         y = 1,
+                         x = c(-1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -4, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -2, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5,
+                               -1.5, 1.5
+                               ))
+
+ellipses_pop <- ggplot(data = M_ind, aes(D13Ccor_consoI, TP)) +
+  theme_classic() +
+  geom_point(aes(col = Taxa), alpha = 0.7) +
+  geom_blank(data = blank_data, aes(x = x, y = y)) +
+  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species),
+            linewidth=1, linetype=1) +
+  scale_color_manual(values = c("red1",
+                                "tan2",
+                                "#0072B2",
+                                "#009E73",
+                                "#56B4E9",
+                                "#CC79A7"
+                                )) +
+  facet_wrap(~Pond, scales = "free_x", 
+             ncol = 3) +
+  xlab(bquote(''*delta^13~C["cor"]*'')) +
+  ylab("Trophic position") +
+  guides(col = guide_legend("Species", nrow = 1)) +
+  theme(legend.position = "bottom")
+
+ellipses_pop
+
+ggsave(ellipses_pop, filename = file.path(here(), "figures",
+                                          "ellipses_crayfishontogeny.jpg"),
        width = 10, height = 15)
 
 ```
