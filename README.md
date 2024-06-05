@@ -6,7 +6,7 @@ Invasive species are widely reported to cause local extinctions of native popula
 
 # Access and reproduce this analysis
 
-You can visualize the analyses through the vignettes of [the GitHub page of this package](https://nbelouard.github.io/AmphibianIsotopicNiche/)  
+You can visualize the analyses through the vignettes of [the GitHub page of this package](https://nbelouard.github.io/AmphibianIsotopicNiches/)  
 Or you can manually access the analyses by opening the vignettes (folder vignettes/).  
 
 
