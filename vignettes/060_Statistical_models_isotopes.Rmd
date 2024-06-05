@@ -24,7 +24,7 @@ This vignette tests the link between the isotopic niche metrics of amphibians an
 
 We begin by loading the required libraries and datasets.
 
-```{r setup, include = FALSE}
+```{r setup}
 
 #Load packages
 library(lme4)
@@ -51,14 +51,12 @@ Then we load the datasets: environmental variables, population metrics and mean 
 ```{r load datasets}
 #Load datasets
 Envt <- read.csv(here::here("data_raw", "Raw_environment.csv"), h = T)
-str(Envt)
 Envt %<>% mutate(Crayfish01 = ifelse(CrayfishCPUE == 0, 0, 1))
          
 # Dataset
 Niche_metrics <- read.csv(file.path(here(), "exported_data", 
                                     "Population_metrics.csv"), h = T) %>% 
   dplyr::select(Code, Pond, Species, SEAc)
-str(Niche_metrics)
 
 Mean_position <- read.csv(file.path(here(), "exported_data", 
                                     "Meanposition_SEAc.csv"), header = T)
@@ -89,16 +87,11 @@ for (i in 1:length(Pop_metrics$Pond)) {
 
 #Create a dataset only for amphibian populations
 Pop_amphib <- Pop_metrics %>% filter(Clade == "Amphibians")
-Pop_crayfish <- Pop_metrics %>% filter(Clade == "Crayfish")
-
 
 #Merge metrics and explicative variables
 Pop_dataset <- merge(Pop_amphib, Envt, by = "Pond")
 print("Are there still 41 populations in the dataset?")
 dim(Pop_dataset)[1] == 41
-
-Pop_crayfish <- merge(Pop_crayfish, Envt, by = "Pond")
-dim(Pop_crayfish)[1]
 ```
 
 
@@ -109,7 +102,7 @@ For each metric tested, we (1) check GOF of a simple model, and transform the me
 
 ### SEAc
 
-```{r check GOF for SEAc, include=FALSE}
+```{r check GOF for SEAc}
 # Test species as a random factor
 mod1 <- lmer(SEAc ~ scale(Canopycover)+ (1|Species), 
              na.action = "na.fail", data = Pop_dataset)
@@ -133,7 +126,7 @@ summary(mod1)
 
 We go with the transformed SEAc and pond as a random factor.
 
-```{r dredge SEAc model, include=FALSE}
+```{r dredge SEAc model}
 
 ## If you want to test the same models, without tree frog tadpoles, uncomment this line
 # Pop_dataset %<>% filter(Species != "Tree frog")
@@ -162,17 +155,12 @@ SEA_select <- subset(SEA_dredge, delta < 2)
 
 # Show selection
 SEA_select
-
-# Save this table
-write.csv(SEA_dredge, file.path(here(), "exported_data", 
-                             "SEAc_selection.csv"), row.names = F)
-
 ```
 
 Two models are retained for SEAc. They contain the variables agile frog and marbled newt.
 
 We check the content of these model as well as the first model containing either Crayfish abundance or Crayfish presence, and the null model.
-```{r check the content of each model for SEAc, include=FALSE}
+```{r check the content of each model for SEAc}
 
 # Show the model syntax
 SEA_dredge <- dredge(mod_SEA, rank = AICc, 
@@ -236,7 +224,7 @@ summary(Model_null)
 ```
 
 ### Figure with SEAc
-```{r corresponding figures for SEAc, include=FALSE}
+```{r corresponding figures for SEAc}
 
 # Organize factor levels
 Pop_dataset$Species <- factor(Pop_dataset$Species, levels = c("Crayfish",
@@ -309,7 +297,7 @@ SEAc <- grid.arrange(SEAc_marbre, SEAc_agile, SEAc_crayfish, ncol = 3)
 ## Mean TP
 
 First check the model GOF
-```{r check GOF for mean TP, include=FALSE}
+```{r check GOF for mean TP}
 
 # Check residuals
 mod1 <- lmer(TPavg ~ scale(Canopycover) + (1|Pond), na.action="na.fail", data=Pop_dataset)
@@ -320,7 +308,7 @@ summary(mod1)
 
 Residuals look ok, we go with this model form.
  
-```{r dredge TP model, include=FALSE}
+```{r dredge TP model}
 
 # Test effect of candidate variables
 mod_TP <- lmer(TPavg ~ scale(Area) + scale(Canopycover) + 
@@ -333,15 +321,12 @@ mod_TP <- lmer(TPavg ~ scale(Area) + scale(Canopycover) +
 
 TP_dredge <- dredge(mod_TP, rank = AICc, m.lim = c(0,2), extra="R^2")
 subset(TP_dredge, delta < 2)
-
-write.csv(TP_dredge, file.path(here(), "exported_data", 
-                             "TP_selection.csv"), row.names = F)
 ```
 
 Two models are kept by the selection, they contain the variables group and canopy cover. 
 We check the content of these models as well as the first model containing either Crayfish abundance or Crayfish presence, and the null model.
 
-```{r check the content of each model for TP, include=FALSE}
+```{r check the content of each model for TP}
 
 TP_dredge <- dredge(mod_TP, rank = AICc, m.lim = c(0,2), extra="R^2", evaluate=FALSE)
 
@@ -379,7 +364,7 @@ performance::r2_nakagawa(Model_null)
 
 
 #First model with crayfish abundance
-Model_CCPUE <- lmer(TPavg ~ scale(CrayfishCPUE) + Group, 
+Model_CCPUE <- lmer(TPavg ~ scale(CrayfishCPUE) + Group + (1|Pond), 
                         na.action="na.fail", 
                         data=Pop_dataset)
 plotresid(Model_CCPUE)
@@ -389,7 +374,7 @@ round(res$coefficients,2)
 
 
 #First model with crayfish presence
-Model_C01 <- lm(TPavg ~ as.factor(Crayfish01) + Group, 
+Model_C01 <- lmer(TPavg ~ as.factor(Crayfish01) + Group + (1|Pond), 
                         na.action="na.fail", 
                         data=Pop_dataset)
 plotresid(Model_C01)
@@ -402,7 +387,7 @@ round(res$coefficients,2)
 
  
 ### Figure with TP
-```{r corresponding figures for TP, include=FALSE}
+```{r corresponding figures for TP}
 
 # Figure with group
 Pop_dataset$Group <- factor(Pop_dataset$Group, levels = c("Tadpoles", "Newts")) 
@@ -458,7 +443,7 @@ TP <- grid.arrange(TP_group, TP_canopy, TP_crayfish, ncol = 3)
 ## Mean d13C
 
 We check the GOF of the model with D13C
-```{r check GOF for D13C, include=FALSE}
+```{r check GOF for D13C}
 
 mod1 <- lmer(D13Cavg ~ scale(Canopycover) + (1|Pond), na.action="na.fail", data=Pop_dataset)
 plotresid(mod1) #residuals ok
@@ -468,7 +453,7 @@ summary(mod1)
 
 We go with the model with untransformed D13C and pond as a random factor.
 
-```{r dredge D13C model, include=FALSE}
+```{r dredge D13C model}
  
 # Test effect of candidate variables
 mod_D13C <- lmer(D13Cavg ~ scale(Area) + scale(Canopycover) + 
@@ -482,15 +467,12 @@ mod_D13C <- lmer(D13Cavg ~ scale(Area) + scale(Canopycover) +
 D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2")
 subset(D13C_dredge, delta < 2)
 
-write.csv(D13C_dredge, file.path(here(), "exported_data", 
-                             "D13C_selection.csv"), row.names = F)
-
 ```
 
 Here, a single model is kept, it contains the variable group only.
 We check the content of this model as well as the first model containing either Crayfish abundance or Crayfish presence, and the null model.
  
-```{r check the content of each model for D13C, include=FALSE}
+```{r check the content of each model for D13C}
 
 D13C_dredge <- dredge(mod_D13C, rank = AICc, m.lim = c(0,2), extra="R^2", evaluate=FALSE)
 
@@ -528,7 +510,7 @@ round(res$coefficients,2)
 ```
 
 ### Figure with D13C 
-```{r corresponding figures for D13C, include=FALSE}
+```{r corresponding figures for D13C}
 
 #Figure with group
 D13C_group <- ggplot(Pop_dataset, aes(y = D13Cavg, x = Group)) +
@@ -562,7 +544,7 @@ D13C <- grid.arrange(D13C_group, D13C_crayfish, ncol = 2)
 
 ## Figure 3
 Finally we assemble all the different metrics on a single figure
-```{r figure 3}
+```{r figure 3, fig.height = 8}
 
 # Get the legend
 plotlegend <- ggplot(Pop_dataset, aes(y = D13Cavg, 
@@ -585,6 +567,8 @@ g <- ggdraw() +
                   c(0, 0, 0),
                   c(1, 0.7, 0.4))
 
-ggsave("./figures/Figure3c.jpg", g, width = 8, height = 8)
+g
+
+ggsave(file.path(here(), "figures", "Figure3c.jpg"), g, width = 8, height = 8)
 ```
 

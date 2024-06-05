@@ -1,12 +1,14 @@
 ---
-title: "#2: Compute niche metrics"
-author: 
-- Nadege Belouard^[UMR EcoBio, UMR DECOD, nadege.belouard@gmail.com]
+title: '#2: Compute niche metrics'
+author: "Nadege Belouard^[UMR EcoBio, UMR DECOD, nadege.belouard@gmail.com]"
 date: "03/06/2024"
 output:
+  html_document:
+    toc: true
+    df_print: paged
   pdf_document:
-    toc: yes
-editor_options: 
+    toc: true
+editor_options:
   chunk_output_type: console
 ---
 
@@ -44,15 +46,14 @@ head(Dataset)
 
 First we are looking into whether there is an ontogenetic shift in crayfish. 
 Wee load the crayfish length data
-```{r load dataset}
+```{r load crayfish dataset}
 
-# load file
 CrayfishLength <- read.table(file.path(here(), "data_raw", 
                                        "CrayfishLength.txt"), 
                     header=T)
 
 # keep only the stable isotope data for crayfish
-Crayfish <- Dataset %<>% filter(Species == "Crayfish")
+Crayfish <- Dataset %>% filter(Species == "Crayfish")
 
 # join the two datasets to obtain the length and stable isotope values for each individual
 Crayfish %<>% left_join(CrayfishLength, by = "Sample_ID")
@@ -270,7 +271,7 @@ coordX <- NULL
 j = 1
 
 for (i in 1:length(spx)) {
-  SE <- standard.ellipse(spx[[i]],spy[[i]],steps=1)
+  SE <- siar::standard.ellipse(spx[[i]],spy[[i]],steps=1)
   Pop[j:(j+360)]<-names(spx)[i]
   coordY[j:(j+360)]<-SE$ySEAc[1:361]
   coordX[j:(j+360)]<-SE$xSEAc[1:361]
@@ -494,8 +495,8 @@ for (i in names(spx_Palmatenewt)) {
 Merge results in a table and export it
 ``` {r analyses of population overlaps}
 
-Table <- cbind(Pond, Species1, Species2, AreaOverlap = round(AreaOverlap,4), 
-             AreaSp1 = round(AreaSp1,4), AreaSp2 = round(AreaSp2,4))
+Table <- cbind(Pond, Species1, Species2, AreaOverlap = AreaOverlap, 
+             AreaSp1 = AreaSp1, AreaSp2 = AreaSp2)
 
 Table <- as.data.frame(Table)
 Table$Prct_overlap <- round(as.numeric(Table$AreaOverlap) / (as.numeric(Table$AreaSp1)+as.numeric(Table$AreaSp2)),4)

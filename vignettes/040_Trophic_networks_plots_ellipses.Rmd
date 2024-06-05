@@ -20,6 +20,7 @@ library(here)
 # Points
 Dataset <- read.csv(file.path(here(), "exported_data", 
                               "Isotope_data_standardized.csv"), header=T)
+M_ind <- Dataset %>% filter (Group %in% c("Crayfish", "Amphibians"))
 
 # Ellipses
 #Per population
@@ -29,12 +30,12 @@ CoordSEAc_pop <- read.csv(file.path(here(),
                           header=T)
 names(CoordSEAc_pop)[1] <- "Taxa"
 
-## If you want to compute ellipses separately for juvenile and adult crayfish, use this file
-# CoordSEAc_pop <- read.csv(file.path(here(), 
-#                                     "exported_data", 
-#                                     "Coordinates_SEAc_ontogeneticshift.csv"), 
-#                           header=T)
-# names(CoordSEAc_pop)[1] <- "Taxa"
+# Ellipses separately for juvenile and adult crayfish
+CoordSEAc_crayfish <- read.csv(file.path(here(),
+                                    "exported_data",
+                                    "Coordinates_SEAc_ontogeneticshift.csv"),
+                          header=T)
+names(CoordSEAc_crayfish)[1] <- "Taxa"
 
 # Average points
 Avg_data_complete <- Dataset %>% group_by(Taxa, Pond) %>%
@@ -43,7 +44,6 @@ Avg_data_complete <- Dataset %>% group_by(Taxa, Pond) %>%
             TPsd = sd(TP),
             D13Csd = sd(D13Ccor_consoI))
 
-
 ```
 
 We summarize each taxa by the average point and its SD to graphically represent the position and the variability in the isotopic signature of each taxa.
@@ -51,7 +51,7 @@ We summarize each taxa by the average point and its SD to graphically represent 
 # Plots with ellipses per population per pond
 
 ## Figure 2: plots with ellipses per population with points
-```{r plot ellipses per population with points}
+```{r plot ellipses per population with points, fig.height = 10}
 
 M_ind$Species <- factor(M_ind$Species, levels = c("Crayfish",
                                                     "Agile frog",
@@ -130,7 +130,7 @@ ggsave(ellipses_pop, filename = file.path(here(), "figures",
 # Plots with ellipses for crayfish ontogenetic shift
 
 ## Figure S3: plots with ellipses per population with points
-```{r plot ellipses per population with points}
+```{r plot ellipses for separated crayfish, fig.height = 10}
 
 M_ind$Taxa <- factor(M_ind$Taxa, levels = c("Ad crayfish",
                                                   "Juv crayfish",
@@ -184,7 +184,7 @@ ellipses_pop <- ggplot(data = M_ind, aes(D13Ccor_consoI, TP)) +
   theme_classic() +
   geom_point(aes(col = Taxa), alpha = 0.7) +
   geom_blank(data = blank_data, aes(x = x, y = y)) +
-  geom_path(data = CoordSEAc_pop, aes(coordX, coordY, col = Species),
+  geom_path(data = CoordSEAc_crayfish, aes(coordX, coordY, col = Species),
             linewidth=1, linetype=1) +
   scale_color_manual(values = c("red1",
                                 "tan2",

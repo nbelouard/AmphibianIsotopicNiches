@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>/404.html</loc>
+  </url>
+  <url>
+    <loc>/articles/010_Isotope_data_standardization.html</loc>
+  </url>
+  <url>
+    <loc>/articles/029_Install_siar_from_archive.html</loc>
+  </url>
+  <url>
+    <loc>/articles/030_Isotope_metrics.html</loc>
+  </url>
+  <url>
+    <loc>/articles/040_Trophic_networks_plots_ellipses.html</loc>
+  </url>
+  <url>
+    <loc>/articles/060_Statistical_models_isotopes.html</loc>
+  </url>
+  <url>
+    <loc>/articles/index.html</loc>
+  </url>
+  <url>
+    <loc>/authors.html</loc>
+  </url>
+  <url>
+    <loc>/index.html</loc>
+  </url>
+  <url>
+    <loc>/LICENSE-text.html</loc>
+  </url>
+  <url>
+    <loc>/reference/index.html</loc>
+  </url>
+</urlset>

@@ -29,13 +29,16 @@ devtools::document()
 
 ## Access and reproduce this analysis
 
+You can visualize the analyses through [the GitHub page of this package](https://nbelouard.github.io/AmphibianIsotopicNiche/)
 You can manually access the analyses by opening the vignettes (folder vignettes/).  
 Or you can automatically run all the vignettes using the following line of code; it will build a site that compiles all the vignettes and in which the code will still be visible.
 ```
 pkgdown::build_site()
 ```
 
-# References
+# Citation
+
+N. Belouard, E.J. Petit, J. Cucherousset, J.M. Paillisson (2024). Variation of the stable isotope niches of native amphibians in ponds invaded by the red swamp crayfish. Neobiota [in press]
 
 For further information, contact @nbelouard
 

@@ -74,7 +74,7 @@ Dataset %<>% mutate(D13C_LF = D13C - 3.32 + 0.99 * C.N)
 
 And we check that the correction increased D13C by comparing it to y = x:
 
-```{r plot the D13C correction, fig.height=4, fig.width=6}
+```{r plot the D13C correction}
 plot(Dataset$D13C_LF ~ Dataset$D13C,
      xlab = "original D13C",
      ylab = "corrected D13C") +
